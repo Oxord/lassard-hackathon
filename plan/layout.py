@@ -560,11 +560,29 @@ def check_evacuation(plan, report):
     return v
 
 
+def check_passport(plan):
+    """Этапы «Паспорта детали»: зоны есть, номера 1..N, порядок — по кольцу маршрута, финал — стекло."""
+    stations = plan.data.get('passport_stations', {}).get('stations', [])
+    v = []
+    if [s['n'] for s in stations] != list(range(1, len(stations) + 1)):
+        v.append('паспорт детали: номера этапов не идут подряд с 1')
+    zones = [s['zone'] for s in stations if s['zone'] != 'finale']
+    unknown = [z for z in zones if z not in plan.zones]
+    if unknown:
+        v.append('паспорт детали: нет зон %s' % unknown)
+    elif not is_subsequence(zones, plan.data['route_order']):
+        v.append('паспорт детали: этапы %s идут против кольца route_order' % zones)
+    if any(s['zone'] == 'finale' for s in stations[:-1]):
+        v.append('паспорт детали: стекло цеха может быть только последним этапом')
+    return v
+
+
 def check_all(data):
     """Возвращает (нарушения, отчёт, plan)."""
     plan, report = Plan(data), {}
     room_violations = check_room(plan)
-    violations = room_violations + check_geometry(plan) + check_dims(plan) + check_adjacency(plan)
+    violations = (room_violations + check_geometry(plan) + check_dims(plan) + check_adjacency(plan)
+                  + check_passport(plan))
     if plan.finale() is None and not room_violations:
         violations.append('нет точки финала у перегородки с цехом на проходе ≥%g м' % plan.p['aisle_min'])
     violations += check_routes(plan, report) + check_gathering(plan, report) + check_evacuation(plan, report)
