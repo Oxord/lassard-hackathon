@@ -4,10 +4,10 @@
 Y — метры от северной стены (в zones.json центр зоны x,z от центра зала, север = −z).
 Все пороги берутся из room.params (там же пометки ДОПУЩЕНИЕ / ПРОВЕРИТЬ).
 """
+import heapq
 import json
 import math
 import os
-from collections import deque
 
 import numpy as np
 
@@ -23,6 +23,8 @@ FINALE_OFFSET = 2.5            # точка финала: от перегоро�
 FINALE_SNAP_MAX = 2.5
 OPENING_POINT_OFFSET = 1.2     # точка у проёма внутри зала, м
 SIMPLIFY_TOL = 0.15            # упрощение полилиний маршрута, м
+SQRT2 = math.sqrt(2)
+STEPS = [(dy, dx, SQRT2 if dy and dx else 1.0) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
 
 
 def load(path=ZONES_JSON):
@@ -193,22 +195,31 @@ class Grid:
         return self.point((ys[i], xs[i]))
 
     def path(self, a, b, mask):
-        """Кратчайший путь (8-связность) по маске; список точек или None."""
+        """Кратчайший путь (A*, 8-связность, октильная метрика) по маске; список клеток или None."""
         start, goal = self.cell(a), self.cell(b)
         if not (mask[start] and mask[goal]):
             return None
+
+        def h(c):
+            dy, dx = abs(c[0] - goal[0]), abs(c[1] - goal[1])
+            return max(dy, dx) + (SQRT2 - 1) * min(dy, dx)
+
+        g = {start: 0.0}
         prev = {start: None}
-        q = deque([start])
-        while q:
-            u = q.popleft()
+        heap = [(h(start), 0.0, start)]
+        while heap:
+            _, gu, u = heapq.heappop(heap)
             if u == goal:
                 break
-            for dy in (-1, 0, 1):
-                for dx in (-1, 0, 1):
-                    v = (u[0] + dy, u[1] + dx)
-                    if 0 <= v[0] < self.ny and 0 <= v[1] < self.nx and mask[v] and v not in prev:
-                        prev[v] = u
-                        q.append(v)
+            if gu > g[u]:
+                continue
+            for dy, dx, cost in STEPS:
+                v = (u[0] + dy, u[1] + dx)
+                if 0 <= v[0] < self.ny and 0 <= v[1] < self.nx and mask[v]:
+                    gv = gu + cost
+                    if gv < g.get(v, math.inf):
+                        g[v], prev[v] = gv, u
+                        heapq.heappush(heap, (gv + h(v), gv, v))
         if goal not in prev:
             return None
         cells, u = [], goal
@@ -217,23 +228,42 @@ class Grid:
             u = prev[u]
         return cells[::-1]
 
+    def span_width(self, p):
+        """Ширина прохода в точке: меньший из свободных пролётов по X и по Y, м."""
+        r, c = self.cell(p)
+        if self.occ[r, c]:
+            return 0.0
+
+        def run(line, k):
+            left = k
+            while left > 0 and not line[left - 1]:
+                left -= 1
+            right = k
+            while right < len(line) - 1 and not line[right + 1]:
+                right += 1
+            return (right - left + 1) * RES
+
+        return min(run(self.occ[r, :], c), run(self.occ[:, c], r))
+
     def distances(self, src, mask):
         """Длина пути (м) от точки src до всех клеток маски."""
-        INF = np.inf
-        dist = np.full(self.occ.shape, INF)
+        dist = np.full(self.occ.shape, np.inf)
         s = self.cell(src)
         if not mask[s]:
             return dist
         dist[s] = 0.0
-        q = deque([s])
-        while q:
-            u = q.popleft()
-            for dy in (-1, 0, 1):
-                for dx in (-1, 0, 1):
-                    v = (u[0] + dy, u[1] + dx)
-                    if 0 <= v[0] < self.ny and 0 <= v[1] < self.nx and mask[v] and dist[v] == INF:
-                        dist[v] = dist[u] + RES * (1.4142 if dy and dx else 1.0)
-                        q.append(v)
+        heap = [(0.0, s)]
+        while heap:
+            du, u = heapq.heappop(heap)
+            if du > dist[u]:
+                continue
+            for dy, dx, cost in STEPS:
+                v = (u[0] + dy, u[1] + dx)
+                if 0 <= v[0] < self.ny and 0 <= v[1] < self.nx and mask[v]:
+                    dv = du + cost * RES
+                    if dv < dist[v]:
+                        dist[v] = dv
+                        heapq.heappush(heap, (dv, v))
         return dist
 
 
@@ -283,9 +313,11 @@ class Plan:
         return {'N': (0, -1), 'S': (0, 1), 'W': (-1, 0), 'E': (1, 0)}[self.zones[i]['front']]
 
     def stop_raw(self, i):
+        """Точка остановки перед фронтом; stop_at — доля вдоль фронта (дверь), по умолчанию середина."""
         (ax, ay), (bx, by) = self.front_segment(i)
         nx, ny = self.front_normal(i)
-        return ((ax + bx) / 2 + nx * STOP_OFFSET, (ay + by) / 2 + ny * STOP_OFFSET)
+        t = self.zones[i].get('stop_at', 0.5)
+        return (ax + (bx - ax) * t + nx * STOP_OFFSET, ay + (by - ay) * t + ny * STOP_OFFSET)
 
     def stop(self, i):
         return self.grid.snap(self.stop_raw(i), self.aisle, STOP_SNAP_MAX)
@@ -319,12 +351,13 @@ class Plan:
         return float(((d <= depth) & ahead & ~g.occ).sum() * RES * RES)
 
     def scenario_points(self, ids):
-        """Точки маршрута: вход → остановки → стекло цеха → переговорная или выход."""
+        """Точки маршрута сценария. Все аудитории идут одним односторонним кольцом route_order
+        (вход → остановки → стекло цеха) и различаются только остановками; финал — переговорная
+        (если она в сценарии) или выход."""
         meeting = set(self.by_model('meeting'))
         ent = self.openings('entrance')
         pts = [('проём %d' % ent[0]['id'], opening_point(ent[0], self.room))] if ent else []
-        body = [i for i in ids if i not in meeting]
-        pts += [(i, self.stop(i)) for i in body]
+        pts += [(i, self.stop(i)) for i in self.data['route_order'] if i not in meeting]
         pts.append(('стекло цеха', self.finale()))
         ends = [i for i in ids if i in meeting]
         if ends:
@@ -419,29 +452,76 @@ def check_adjacency(plan):
     return v
 
 
-def check_routes(plan, report):
-    """Каждый сегмент каждого сценария — по полосе ≥ aisle_min (у проёмов ≥ evac_min)."""
-    v, wm = [], plan.grid.width_map()
-    report['routes'] = {}
-    for s in plan.data['scenarios']:
-        pts = plan.scenario_points(s['zones'])
-        bad = [str(k) for k, p in pts if p is None]
-        if bad:
-            v.append('%s: нет точки остановки на проходе ≥%g м у %s' % (s['id'], plan.p['aisle_min'], ', '.join(bad)))
+def build_route(plan, name, ids, wm):
+    """Маршрут по проходам: (полилиния, сегменты, нарушения)."""
+    pts = plan.scenario_points(ids)
+    bad = [str(k) for k, p in pts if p is None]
+    if bad:
+        return [], [], ['%s: нет точки остановки на проходе ≥%g м у %s' % (name, plan.p['aisle_min'], ', '.join(bad))]
+    line, segs, v = [], [], []
+    for (ka, a), (kb, b) in zip(pts, pts[1:]):
+        near_door = str(ka).startswith('проём') or str(kb).startswith('проём')
+        cells = plan.grid.path(a, b, plan.evac if near_door else plan.aisle)
+        if cells is None:
+            v.append('%s: %s → %s нет прохода ≥%g м' % (name, ka, kb, plan.p['evac_min' if near_door else 'aisle_min']))
             continue
-        line, segs = [], []
-        for (ka, a), (kb, b) in zip(pts, pts[1:]):
-            near_door = str(ka).startswith('проём') or str(kb).startswith('проём')
-            mask = plan.evac if near_door else plan.aisle
-            cells = plan.grid.path(a, b, mask)
-            if cells is None:
-                v.append('%s: %s → %s нет прохода ≥%g м' % (s['id'], ka, kb, plan.p['evac_min' if near_door else 'aisle_min']))
+        seg = simplify([plan.grid.point(c) for c in cells])
+        segs.append({'from': ka, 'to': kb, 'min_width': round(float(min(wm[c] for c in cells)), 1),
+                     'length': round(polyline_length(seg), 1), 'points': seg})
+        line += seg if not line else seg[1:]
+    return line, segs, v
+
+
+def counterflows(segs, step=0.5, near=1.0, min_len=2.0):
+    """Пары несоседних сегментов маршрута, идущих навстречу друг другу ближе near на длине > min_len."""
+    samples = []   # (сегмент, x, y, dx, dy)
+    for k, s in enumerate(segs):
+        for a, b in zip(s['points'], s['points'][1:]):
+            L = math.hypot(b[0] - a[0], b[1] - a[1])
+            if L < 1e-9:
                 continue
-            width = float(min(wm[c] for c in cells))
-            seg = simplify([plan.grid.point(c) for c in cells])
-            segs.append({'from': ka, 'to': kb, 'min_width': round(width, 1), 'length': round(polyline_length(seg), 1)})
-            line += seg if not line else seg[1:]
-        report['routes'][s['id']] = {'points': line, 'segments': segs}
+            ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+            for n in range(int(L / step) + 1):
+                samples.append((k, a[0] + ux * n * step, a[1] + uy * n * step, ux, uy))
+    if not samples:
+        return []
+    arr = np.array([s[1:] for s in samples])
+    seg = np.array([s[0] for s in samples])
+    hits = {}
+    for i in range(len(arr)):
+        d = np.hypot(arr[:, 0] - arr[i, 0], arr[:, 1] - arr[i, 1])
+        dot = arr[:, 2] * arr[i, 2] + arr[:, 3] * arr[i, 3]
+        m = (d < near) & (dot < -0.5) & (seg > seg[i] + 1)
+        for j in set(seg[m].tolist()):
+            hits[(int(seg[i]), j)] = hits.get((int(seg[i]), j), 0) + 1
+    return [(segs[a], segs[b]) for (a, b), n in hits.items() if n * step > min_len]
+
+
+def is_subsequence(seq, order):
+    it = iter(order)
+    return all(x in it for x in seq)
+
+
+def check_routes(plan, report):
+    """Сценарий идёт по кольцу route_order без разворотов; каждый сегмент — по полосе
+    ≥ aisle_min (у проёмов ≥ evac_min)."""
+    v, wm = [], plan.grid.width_map()
+    order = plan.data['route_order']
+    missing = sorted(set(plan.zones) - set(order))
+    if missing:
+        v.append('route_order: нет зон %s' % missing)
+    for s in plan.data['scenarios']:
+        if not is_subsequence(s['zones'], order):
+            v.append('%s: порядок %s расходится с кольцом route_order — встречный поток' % (s['id'], s['zones']))
+    report['routes'] = {}
+    named = [(s['id'], s['zones']) for s in plan.data['scenarios']] + [('all', order)]
+    for name, ids in named:
+        line, segs, sv = build_route(plan, name, ids, wm)
+        v += sv
+        for a, b in counterflows(segs):
+            v.append('%s: встречный поток — участок %s → %s идёт навстречу %s → %s' % (name, a['from'], a['to'], b['from'], b['to']))
+        report['routes'][name] = {'points': line, 'segments': segs}
+    report['width_map'] = wm
     return v
 
 

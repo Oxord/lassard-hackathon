@@ -73,7 +73,11 @@ class PlanChecksTests(unittest.TestCase):
     def test_current_layout_has_no_violations(self):
         violations, report, _ = layout.check_all(DATA)
         self.assertEqual(violations, [])
-        self.assertEqual(set(report['routes']), {s['id'] for s in DATA['scenarios']})
+        self.assertEqual(set(report['routes']), {s['id'] for s in DATA['scenarios']} | {'all'})
+
+    def test_scenario_against_ring_order_is_counterflow(self):
+        d = mutated(lambda d: d['scenarios'][0].update(zones=[14, 0, 4, 1, 13]))
+        self.assertTrue(any('встречный поток' in v for v in layout.check_all(d)[0]))
 
     def test_route_segments_meet_aisle_width(self):
         _, report, plan = layout.check_all(DATA)
@@ -106,6 +110,10 @@ class PlanChecksTests(unittest.TestCase):
     def test_zone_smaller_than_equipment_is_rejected(self):
         d = mutated(lambda d: zone(d, 9).update(d=3.0, z=1.8 - 8.7))
         self.assertTrue(any('зона 9' in v and 'габарит' in v for v in layout.check_all(d)[0]))
+
+    def test_production_side_west_breaks_one_way_route(self):
+        d = mutated(lambda d: d['room'].update(production_side='west'))
+        self.assertTrue(any('встречный поток' in v for v in layout.check_all(d)[0]))
 
     def test_production_side_change_moves_finale(self):
         d = mutated(lambda d: d['room'].update(production_side='west'))
