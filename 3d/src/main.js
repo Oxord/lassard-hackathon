@@ -161,11 +161,20 @@ function walkStep(dt) {
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
 }
 
-// Автотур по зонам 0 → 11 с подписями
+// Автотур: вступление, зоны 0 → 11 с подписями, финал
+const PER = 4;
+function makeStops() {
+  const zs = data.zones.map((z) => ({
+    title: `<b>${z.id}.</b> ${z.name}`, sub: z.demo,
+    cam: new THREE.Vector3(z.x, 4.4, z.z + (z.z > 0 ? -11 : 11)), look: new THREE.Vector3(z.x, 0.9, z.z),
+  }));
+  const intro = { title: '<b>ЛАССАРД</b>: «Путь станка»', sub: 'Шоурум 626 м²: от кристалла до готового станка', cam: new THREE.Vector3(0, 22, 27), look: new THREE.Vector3(0, 0, 0) };
+  const outro = { title: 'От выращивания кристалла до сборки станка', sub: '80% локализации · полный цикл · реестр Минпромторга', cam: new THREE.Vector3(0, 30, 3), look: new THREE.Vector3(0, 0, 0) };
+  return [intro, ...zs, outro];
+}
 function startTour() {
   mode = 'tour'; controls.enabled = false; setOn('btn-tour');
-  const stops = data.zones.map((z) => ({ z, cam: new THREE.Vector3(z.x, 3.6, z.z + (z.z > 0 ? -11 : 11)), look: new THREE.Vector3(z.x, 1.0, z.z) }));
-  tour = { stops, t: 0, per: 5 };
+  tour = { stops: makeStops(), t: 0, per: PER };
   $('caption').style.display = 'block';
 }
 $('btn-tour').onclick = startTour;
@@ -178,12 +187,22 @@ function tourStep(dt) {
   const a = tour.stops[i], b = tour.stops[Math.min(i + 1, tour.stops.length - 1)];
   const e = k * k * (3 - 2 * k);
   camera.position.lerpVectors(a.cam, b.cam, e);
-  const look = new THREE.Vector3().lerpVectors(a.look, b.look, e);
-  camera.lookAt(look);
-  $('caption').innerHTML = `<b>${a.z.id}.</b> ${a.z.name}<br><span style="font-size:16px;color:#cfd3da">${a.z.demo}</span>`;
+  camera.lookAt(new THREE.Vector3().lerpVectors(a.look, b.look, e));
+  $('caption').innerHTML = `${a.title}<br><span style="font-size:16px;color:#cfd3da">${a.sub}</span>`;
 }
 window.__tourDone = () => tourDone;
-if (new URLSearchParams(location.search).get('tour') === '1') startTour();
+// Для записи видео: кадр на заданной секунде (Playwright вызывает window.__renderAt(t))
+window.__tourLength = () => makeStops().length * PER;
+window.__renderAt = (t) => {
+  window.__frozen = true;
+  if (!tour) startTour();
+  mode = 'tour'; tour.t = Math.min(t, makeStops().length * PER - 0.001);
+  tourStep(0);
+  renderer.render(scene, camera);
+};
+const qs = new URLSearchParams(location.search);
+if (qs.get('clean') === '1') ['bar-top', 'bar-scn', 'hint'].forEach((id) => { $(id).style.display = 'none'; });
+if (qs.get('tour') === '1') startTour();
 
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
@@ -191,7 +210,7 @@ const clock = new THREE.Clock();
 (function loop() {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (mode === 'walk') walkStep(dt);
-  else if (mode === 'tour' && tour) tourStep(dt);
+  else if (mode === 'tour' && tour) { if (!window.__frozen) tourStep(dt); }
   else controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
