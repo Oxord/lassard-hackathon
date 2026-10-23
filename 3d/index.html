@@ -7,22 +7,30 @@
 <style>
   html,body{margin:0;height:100%;background:#14161a;font-family:system-ui,sans-serif;color:#fff;overflow:hidden}
   #app{position:fixed;inset:0}
-  #bar{position:fixed;top:12px;left:12px;display:flex;gap:8px;flex-wrap:wrap;z-index:2}
+  .bar{position:fixed;left:12px;display:flex;gap:8px;flex-wrap:wrap;z-index:2;max-width:calc(100% - 340px)}
+  #bar-top{top:12px} #bar-scn{top:56px}
   button{background:#c8102e;color:#fff;border:0;border-radius:6px;padding:8px 12px;font-size:14px;cursor:pointer}
-  button.alt{background:#3a3f47}
+  button.alt{background:#3a3f47} button.on{background:#ffd400;color:#14161a}
   #card{position:fixed;right:12px;top:12px;width:300px;max-width:calc(100% - 24px);background:#fff;color:#14161a;border-radius:10px;padding:14px;display:none;z-index:2}
-  #card h3{margin:0 0 6px}
-  #card small{color:#666}
+  #card h3{margin:0 0 6px} #card small{color:#666}
+  #caption{position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:rgba(20,22,26,.82);padding:14px 22px;border-radius:10px;font-size:22px;display:none;z-index:2;max-width:80%;text-align:center}
+  #caption b{color:#ffd400}
+  #hint{position:fixed;left:12px;bottom:12px;font-size:12px;color:#9aa0aa;z-index:2}
 </style>
 </head>
 <body>
 <div id="app"></div>
-<div id="bar">
+<div class="bar" id="bar-top">
   <button id="btn-orbit">Облёт</button>
   <button id="btn-top" class="alt">Вид сверху</button>
-  <button id="btn-route" class="alt">Маршрут вкл/выкл</button>
+  <button id="btn-walk" class="alt">Прогулка</button>
+  <button id="btn-tour" class="alt">Автотур</button>
+  <button id="btn-route" class="alt">Маршрут</button>
 </div>
+<div class="bar" id="bar-scn"></div>
 <div id="card"></div>
+<div id="caption"></div>
+<div id="hint">Клик по зоне: карточка. Прогулка: WASD или стрелки, мышь с зажатой кнопкой: поворот.</div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>
