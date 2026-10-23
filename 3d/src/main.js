@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import data from './zones.json';
+import routes from './routes.json';
 import { buildModel } from './models.js';
+import { buildRoom, entrancePoint } from './room.js';
 
 const COLORS = { red: 0xc8102e, white: 0xf2f2f2, gray: 0x8a9099 };
-const { w: RW, d: RD, h: RH, grid: G } = data.room;
+const { w: RW, d: RD } = data.room;
 const $ = (id) => document.getElementById(id);
 
 const app = $('app');
@@ -24,35 +26,8 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.2);
 sun.position.set(10, 30, 10);
 scene.add(sun);
 
-// Пол, сетка, стены, колонны
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), new THREE.MeshStandardMaterial({ color: 0x2a2e35 }));
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
-const gridPts = [];
-for (let x = -RW / 2; x <= RW / 2 + 0.01; x += G) gridPts.push(new THREE.Vector3(x, 0.02, -RD / 2), new THREE.Vector3(x, 0.02, RD / 2));
-for (let z = -RD / 2; z <= RD / 2 + 0.01; z += RD / 3) gridPts.push(new THREE.Vector3(-RW / 2, 0.02, z), new THREE.Vector3(RW / 2, 0.02, z));
-scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gridPts), new THREE.LineBasicMaterial({ color: 0x555b66 })));
-
-const wallMat = new THREE.MeshStandardMaterial({ color: 0xdadde2, transparent: true, opacity: 0.22 });
-const wall = (w, d, x, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, RH, d), wallMat); m.position.set(x, RH / 2, z); scene.add(m); };
-wall(RW, 0.3, 0, -RD / 2); wall(RW, 0.3, 0, RD / 2); wall(0.3, RD, -RW / 2, 0); wall(0.3, RD, RW / 2, 0);
-
-const colMat = new THREE.MeshStandardMaterial({ color: 0x9aa0aa });
-for (let x = -RW / 2 + G; x < RW / 2; x += G)
-  for (const z of [-RD / 2 + RD / 3, RD / 2 - RD / 3]) {
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, RH, 16), colMat);
-    c.position.set(x, RH / 2, z);
-    scene.add(c);
-  }
-
-// Светопрозрачная перегородка с цехом (ПРЕДПОЛОЖЕНИЕ: цех за северной стеной)
-const glass = new THREE.Mesh(new THREE.BoxGeometry(RW - 6, RH - 1, 0.08),
-  new THREE.MeshPhysicalMaterial({ color: 0x88ccff, transparent: true, opacity: 0.3, roughness: 0.05 }));
-glass.position.set(0, (RH - 1) / 2, -RD / 2 + 0.8);
-scene.add(glass);
-const glassLbl = label('Светопрозрачная перегородка с цехом', 1.0, '#88ccff', 6);
-glassLbl.position.set(0, RH - 0.4, -RD / 2 + 0.9);
-scene.add(glassLbl);
+// Зал: пол, разметка 6 м, стены с проёмами, колонны 12 м, перегородка с цехом — из параметров room
+buildRoom(scene, data.room, label);
 
 function label(text, size, color = '#fff', aspect = 1) {
   const cv = document.createElement('canvas');
@@ -80,7 +55,7 @@ data.zones.forEach((z) => {
   zoneMeshes.push(m);
   byId[z.id] = m;
 
-  const model = buildModel(z.model);
+  const model = fitModel(buildModel(z.model), z);
   model.position.set(z.x, 0.18, z.z);
   scene.add(model);
 
@@ -89,20 +64,32 @@ data.zones.forEach((z) => {
   scene.add(sp);
 });
 
-// Маршрут
-const routePts = (ids) => ids.map((i) => { const z = data.zones[i]; return new THREE.Vector3(z.x, 0.3, z.z + (z.z > 0 ? -1.9 : 1.9)); });
+// Модель вписываем в габарит зоны: поворот на 90°, если длинные стороны не совпадают, и уменьшение до зоны
+function fitModel(model, z) {
+  const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+  if ((size.x > size.z) !== (z.w > z.d) && Math.abs(size.x - size.z) > 0.3) { model.rotation.y = Math.PI / 2; [size.x, size.z] = [size.z, size.x]; }
+  const k = Math.min(1, (z.w - 0.2) / size.x, (z.d - 0.2) / size.z);
+  model.scale.setScalar(k);
+  return model;
+}
+
+// Маршрут: полилинии по проходам из routes.json (генерирует plan/make_plan.py)
 let route = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffd400 }));
 scene.add(route);
-function setRoute(ids) { route.geometry.dispose(); route.geometry = new THREE.BufferGeometry().setFromPoints(routePts(ids)); }
+function setRoute(key) {
+  const pts = (routes.routes[key] || routes.routes.all).map(([x, z]) => new THREE.Vector3(x, 0.3, z));
+  route.geometry.dispose();
+  route.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+}
 const allIds = data.zones.map((z) => z.id);
-setRoute(allIds);
+setRoute('all');
 
 // Сценарии
 let activeScn = null;
 function applyScenario(s) {
   activeScn = s;
   const ids = s ? s.zones : allIds;
-  setRoute(ids);
+  setRoute(s ? s.id : 'all');
   zoneMeshes.forEach((m) => {
     const on = ids.includes(m.userData.id);
     m.material.emissive.setHex(s && on ? 0x333300 : 0x000000);
@@ -129,7 +116,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const hit = ray.intersectObjects(zoneMeshes)[0];
   if (!hit) { card.style.display = 'none'; return; }
   const z = hit.object.userData;
-  card.innerHTML = `<h3>${z.id}. ${z.name}</h3><small>Экспонаты:</small><ul>${z.exhibits.map((x) => `<li>${x}</li>`).join('')}</ul><small>Демонстрация:</small><p style="margin:4px 0 0">${z.demo}</p>`;
+  card.innerHTML = `<h3>${z.id}. ${z.name}</h3><small>Экспонаты:</small><ul>${z.exhibits.map((x) => `<li>${x}</li>`).join('')}</ul><small>Демонстрация:</small><p style="margin:4px 0 0">${z.demo}</p><small>Зона ${z.w}×${z.d} м; габарит ${z.dims.equip.join('×')} м — ${z.dims.status === 'DIM_TBD' ? 'DIM_TBD, допущение' : 'по facts.md'}</small>`;
   card.style.display = 'block';
 });
 
@@ -145,7 +132,7 @@ $('btn-route').onclick = () => { route.visible = !route.visible; };
 // Прогулка
 let yaw = 0, pitch = 0, dragging = false;
 const keys = {};
-$('btn-walk').onclick = () => { mode = 'walk'; tour = null; controls.enabled = false; camera.position.set(-17, 1.7, 7); yaw = 0; pitch = 0; setOn('btn-walk'); };
+$('btn-walk').onclick = () => { mode = 'walk'; tour = null; controls.enabled = false; const [ex, ez] = entrancePoint(data.room); camera.position.set(ex, 1.7, ez); yaw = 0; pitch = 0; setOn('btn-walk'); };
 addEventListener('keydown', (e) => { keys[e.code] = true; });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 renderer.domElement.addEventListener('pointerdown', () => { dragging = true; });
@@ -161,13 +148,25 @@ function walkStep(dt) {
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
 }
 
-// Автотур: вступление, зоны 0 → 11 с подписями, финал
+// Автотур: вступление, зоны по кольцу маршрута (route_order) с подписями, стекло цеха, финал
 const PER = 4;
+const FRONT = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
 function makeStops() {
-  const zs = data.zones.map((z) => ({
-    title: `<b>${z.id}.</b> ${z.name}`, sub: z.demo,
-    cam: new THREE.Vector3(z.x, 4.4, z.z + (z.z > 0 ? -11 : 11)), look: new THREE.Vector3(z.x, 0.9, z.z),
-  }));
+  const zoneById = Object.fromEntries(data.zones.map((z) => [z.id, z]));
+  const zs = data.route_order.map((id) => {
+    const z = zoneById[id];
+    const [nx, nz] = FRONT[z.front] || [0, 1];
+    return {
+      title: `<b>${z.id}.</b> ${z.name}`, sub: z.demo,
+      cam: new THREE.Vector3(z.x + nx * 8, 4.4, z.z + nz * 8), look: new THREE.Vector3(z.x, 0.9, z.z),
+    };
+  });
+  const [fx, fz] = routes.finale;
+  const glass = {
+    title: '<b>Финал:</b> цех за стеклом', sub: 'Светопрозрачная перегородка с лазерной защитой: реальное производство без нарушения техники безопасности',
+    cam: new THREE.Vector3(fx - Math.sign(fx) * 6, 3.2, fz), look: new THREE.Vector3(fx + Math.sign(fx) * 4, 2.0, fz),
+  };
+  zs.splice(zs.length - 1, 0, glass);
   const intro = { title: '<b>ЛАССАРД</b>: «Путь станка»', sub: 'Шоурум 626 м²: от кристалла до готового станка', cam: new THREE.Vector3(0, 22, 27), look: new THREE.Vector3(0, 0, 0) };
   const outro = { title: 'От выращивания кристалла до сборки станка', sub: '80% локализации · полный цикл · реестр Минпромторга', cam: new THREE.Vector3(0, 30, 3), look: new THREE.Vector3(0, 0, 0) };
   return [intro, ...zs, outro];

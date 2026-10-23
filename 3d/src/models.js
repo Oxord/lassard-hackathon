@@ -107,13 +107,54 @@ const builders = {
     box(0.12, 0.12, 0.5, RED, -0.5, 0.95, 0, g);
     box(0.12, 0.12, 0.5, DARK, 0.5, 0.95, 0, g);
   },
-  testdrive(g) {
-    box(2.6, 1.1, 1.8, WHITE, -0.6, 0, 0, g);
-    box(2.6, 0.12, 1.8, RED, -0.6, 1.1, 0, g);
-    box(1.6, 0.1, 1.0, GRAY, 1.6, 0.85, 0.6, g);
-    for (const x of [1.0, 2.2]) box(0.08, 0.85, 0.08, DARK, x, 0, 0.6, g);
-    box(0.5, 0.04, 0.5, 0xc0c0c8, 1.6, 0.95, 0.6, g);
-    box(1.0, 0.7, 0.06, DARK, 1.6, 1.3, -0.1, g);
+  sampledesk(g) {
+    // тест-драйв без станка: стол приёма образцов и экран результатов (обработка на зонах 6 и 7)
+    box(1.6, 0.1, 0.6, WHITE, 0, 0.85, 0, g);
+    for (const x of [-0.7, 0.7]) box(0.08, 0.85, 0.08, DARK, x, 0, 0, g);
+    box(0.4, 0.04, 0.3, 0xc0c0c8, -0.3, 0.95, 0, g);
+    box(1.2, 0.7, 0.06, DARK, 0, 1.2, -0.35, g);
+    box(1.2, 0.08, 0.07, RED, 0, 1.9, -0.35, g);
+  },
+  'vitrine-off'(g) {
+    // витрина обесточенных ручных аппаратов
+    box(1.9, 0.9, 0.6, WHITE, 0, 0, 0, g);
+    const c = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 0.6), glassMat());
+    c.position.set(0, 1.35, 0);
+    g.add(c);
+    box(0.5, 0.25, 0.25, GRAY, -0.5, 0.9, 0, g);
+    box(0.5, 0.25, 0.25, GRAY, 0.4, 0.9, 0, g);
+  },
+  booth(g) {
+    // закрытая кабина 3×3 м: стены, смотровое окно с лазерной защитой, вытяжка, дверь с блокировкой
+    const H = 2.6, S = 3.0, T = 0.08;
+    box(S, H, T, RED, 0, 0, -S / 2 + T / 2, g);
+    box(T, H, S, RED, -S / 2 + T / 2, 0, 0, g);
+    box(T, H, S, RED, S / 2 - T / 2, 0, 0, g);
+    box(0.6, H, T, RED, -S / 2 + 0.3, 0, S / 2 - T / 2, g);
+    box(1.0, H, T, DARK, S / 2 - 0.5, 0, S / 2 - T / 2, g); // дверь с блокировкой
+    box(1.4, 1.0, T, RED, -0.3, 0, S / 2 - T / 2, g);
+    box(1.4, 0.5, T, RED, -0.3, 2.1, S / 2 - T / 2, g);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 0.04), new THREE.MeshPhysicalMaterial({ color: 0x33aa55, transparent: true, opacity: 0.45 }));
+    win.position.set(-0.3, 1.55, S / 2 - T / 2);
+    g.add(win);
+    box(1.6, 0.8, 1.0, WHITE, 0, 0, -0.6, g);
+    cyl(0.2, 1.2, GRAY, 0.8, H, -0.9, g); // местная вытяжка
+  },
+  meeting(g) {
+    // переговорная: стол на 10 мест, экран результатов, стеклянные стены
+    box(4.0, 0.06, 1.4, WHITE, 0, 0.74, 0, g);
+    box(0.2, 0.74, 0.8, GRAY, 0, 0, 0, g);
+    for (let i = 0; i < 5; i++) for (const z of [-1.1, 1.1]) box(0.5, 0.45, 0.5, DARK, -1.6 + i * 0.8, 0, z, g);
+    box(1.8, 1.0, 0.06, DARK, 0, 1.0, -1.85, g);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(5.8, 2.6, 0.05), glassMat());
+    wall.position.set(0, 1.3, 1.95);
+    g.add(wall);
+  },
+  passport(g) {
+    // киоск «Паспорт детали»: выдача пластины и QR-паспорта
+    box(0.6, 1.1, 0.5, WHITE, 0, 0, 0, g);
+    box(0.5, 0.35, 0.05, DARK, 0, 1.15, 0.1, g).rotation.x = -0.4;
+    box(0.6, 0.1, 0.5, RED, 0, 1.1, 0, g);
   },
   classroom(g) {
     for (let i = 0; i < 3; i++) {
