@@ -28,6 +28,7 @@ SHORT = {'Вход: история и география': 'Вход: истор
          'Ручные лазерные аппараты: витрина': 'Ручные\nвитрина', 'Закрытая кабина ручных аппаратов': 'Кабина\nручных',
          'Гравировка и маркировка': 'Гравировка', 'Выращивание кристаллов': 'Кристаллы',
          'Лазерные источники': 'Источники', 'Тест-драйв образцов': 'Тест-драйв'}
+WIDTH_LABEL_MAX = 6   # шире — подписываем «≥6 м»: пролёт открытого зала, а не ширина прохода
 SIDE_RU = {'north': 'север', 'south': 'юг', 'east': 'восток', 'west': 'запад'}
 
 
@@ -162,6 +163,35 @@ def assumptions_line(plan):
                SIDE_RU.get(room.get('office_side'), '?'), plan.p['service']))
 
 
+CIRCLED = '①②③④⑤⑥⑦⑧⑨'
+STATION = '#ffd400'
+
+
+def station_point(plan, s):
+    """Где рисовать кружок этапа: левый верхний угол зоны или рядом с точкой финала."""
+    if s['zone'] == 'finale':
+        f = plan.finale()
+        return (f[0] - 1.0, f[1] - 0.7)
+    r = plan.rects[s['zone']]
+    return (r[0], r[2])   # на углу зоны, чтобы не закрывать номер и подпись
+
+
+def draw_passport(ax, plan):
+    for s in plan.data.get('passport_stations', {}).get('stations', []):
+        x, y = station_point(plan, s)
+        ax.plot(x, y, 'o', ms=17, mfc=STATION, mec=DARK, mew=1.4, zorder=11)
+        ax.text(x, y, str(s['n']), ha='center', va='center', fontsize=10, fontweight='bold', color=DARK, zorder=12)
+
+
+def passport_legend(plan):
+    ps = plan.data.get('passport_stations', {})
+    parts = [('%s %s' % (CIRCLED[s['n'] - 1], s['text'])) if s['zone'] == 'finale'
+             else ('%s зона %s — %s' % (CIRCLED[s['n'] - 1], s['zone'], s['text']))
+             for s in ps.get('stations', [])]
+    return ['Этапы «Паспорта детали» (жёлтые кружки): ' + ' · '.join(parts) + '.',
+            'ДОПУЩЕНИЕ: клиенту — индивидуальная деталь, группе — одна общая табличка; время гравировки и номер реестра уточнить у эксперта.']
+
+
 def plan_zones(plan, report):
     fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120)
     draw_room(ax, plan, 'Планировка 1. Зонирование по сетке колонн 12×12 м и маршрут «Паспорт детали»')
@@ -174,14 +204,16 @@ def plan_zones(plan, report):
             a, b = s['points'][len(s['points']) // 2 - 1], s['points'][len(s['points']) // 2]
             p = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
             w = plan.grid.span_width(p)
-            ax.text(p[0], p[1] - 0.35, '↔ %s м' % ('%.1f' % w).replace('.', ','),
+            txt = '≥%g' % WIDTH_LABEL_MAX if w > WIDTH_LABEL_MAX else ('%.1f' % w).replace('.', ',')
+            ax.text(p[0], p[1] - 0.35, '↔ %s м' % txt,
                     fontsize=6.5, color='#7a5600', ha='center', zorder=9,
                     bbox=dict(fc='white', ec='none', alpha=0.75, pad=0.6))
     f = plan.finale()
     ax.plot(*f, marker='*', ms=16, color=GLASS, mec=DARK, zorder=9)
     ax.text(f[0], f[1] + 0.9, 'Финал:\nвид на цех', ha='center', va='top', fontsize=7, color=GLASS, fontweight='bold', zorder=9)
+    draw_passport(ax, plan)
     widths = [s['min_width'] for r in report['routes'].values() for s in r['segments'] if not str(s['from']).startswith('проём') and not str(s['to']).startswith('проём')]
-    footer(ax, plan, [
+    footer(ax, plan, passport_legend(plan) + [
         'Красный: рабочая зона · Белый: декоративная · Серый: техника · жирная рамка: закрытое помещение · '
         'жёлтая линия: односторонний маршрут (вход → запад → север → восток → стекло цеха → 13 или проём 2)',
         'Подписи на маршруте — ширина прохода; наименьшая по всем маршрутам %s м (требование ≥%s м на группу %d чел., ДОПУЩЕНИЕ, ПРОВЕРИТЬ СП 1.13130).'
@@ -244,6 +276,8 @@ def plan_flows(plan, report):
         ends = 'стекло → 13' if any(plan.zones[i]['model'] == 'meeting' for i in s['zones']) else 'стекло → проём 2'
         ax.plot([], [], color=SC_COL[s['id']], lw=3,
                 label='%s: %s' % (s['name'], ' → '.join(str(i) for i in s['zones'] if plan.zones[i]['model'] != 'meeting') + ' → ' + ends))
+    draw_passport(ax, plan)
+    footer(ax, plan, passport_legend(plan))
     ax.legend(loc='upper left', bbox_to_anchor=(0.0, 0.0), ncol=2, fontsize=8.5, frameon=False)
     fig.savefig(os.path.join(OUT, 'plan-flows.png'), bbox_inches='tight')
     plt.close(fig)

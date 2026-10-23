@@ -111,6 +111,19 @@ class PlanChecksTests(unittest.TestCase):
         d = mutated(lambda d: zone(d, 9).update(d=3.0, z=1.8 - 8.7))
         self.assertTrue(any('зона 9' in v and 'габарит' in v for v in layout.check_all(d)[0]))
 
+    def test_client_route_visits_optomechanics_between_sources_and_cutting(self):
+        client = next(s for s in DATA['scenarios'] if s['id'] == 'client')['zones']
+        self.assertEqual(client[client.index(4) + 1:client.index(4) + 3], [5, 6])
+
+    def test_passport_stations_follow_ring(self):
+        st = DATA['passport_stations']['stations']
+        self.assertEqual([s['zone'] for s in st], [14, 6, 7, 12, 'finale'])
+        self.assertEqual(layout.check_passport(layout.Plan(DATA)), [])
+
+    def test_passport_station_against_ring_is_rejected(self):
+        d = mutated(lambda d: d['passport_stations']['stations'][1].update(zone=12))
+        self.assertTrue(any('паспорт детали' in v for v in layout.check_all(d)[0]))
+
     def test_production_side_west_breaks_one_way_route(self):
         d = mutated(lambda d: d['room'].update(production_side='west'))
         self.assertTrue(any('встречный поток' in v for v in layout.check_all(d)[0]))
