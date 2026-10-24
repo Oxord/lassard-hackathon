@@ -4,6 +4,7 @@ import data from './zones.json';
 import routes from './routes.json';
 import { buildModel } from './models.js';
 import { buildRoom, entrancePoint } from './room.js';
+import { createLabels } from './labels.js';
 
 const COLORS = { red: 0xc8102e, white: 0xf2f2f2, gray: 0x8a9099 };
 const { w: RW, d: RD } = data.room;
@@ -27,21 +28,9 @@ sun.position.set(10, 30, 10);
 scene.add(sun);
 
 // Зал: пол, разметка 6 м, стены с проёмами, колонны 12 м, перегородка с цехом — из параметров room
+const labels = createLabels();
+const label = labels.create;
 buildRoom(scene, data.room, label);
-
-function label(text, size, color = '#fff', aspect = 1) {
-  const cv = document.createElement('canvas');
-  cv.width = 128 * aspect; cv.height = 128;
-  const ctx = cv.getContext('2d');
-  if (aspect === 1) {
-    ctx.fillStyle = '#14161a'; ctx.beginPath(); ctx.arc(64, 64, 60, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.fillStyle = color; ctx.font = `bold ${aspect === 1 ? 64 : 40}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(text, cv.width / 2, 68);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }));
-  sp.scale.set(size * aspect * 1.6, size * 1.6, 1);
-  return sp;
-}
 
 // Зоны
 const zoneMeshes = [];
@@ -197,6 +186,7 @@ window.__renderAt = (t) => {
   if (!tour) startTour();
   mode = 'tour'; tour.t = Math.min(t, makeStops().length * PER - 0.001);
   tourStep(0);
+  labels.update(camera, innerWidth, innerHeight, true);
   renderer.render(scene, camera);
 };
 const qs = new URLSearchParams(location.search);
@@ -211,6 +201,7 @@ const clock = new THREE.Clock();
   if (mode === 'walk') walkStep(dt);
   else if (mode === 'tour' && tour) { if (!window.__frozen) tourStep(dt); }
   else controls.update();
+  labels.update(camera, innerWidth, innerHeight, mode === 'walk' || mode === 'tour');
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 })();
