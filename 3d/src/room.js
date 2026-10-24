@@ -88,7 +88,7 @@ export function buildRoom(scene, room, label) {
   if (segs.length) {
     const [t0, t1] = segs.reduce((a, b) => (b[1] - b[0] > a[1] - a[0] ? b : a));
     const [x, z] = wallPoint(room, room.production_side, (t0 + t1) / 2, 0.4);
-    const lbl = label('Цех · вид на реальный процесс', 1.0, '#262626', 8);
+    const lbl = label('Стекло в цех', 1.0, '#262626', 8);
     lbl.position.set(x, RH - 0.6, z);
     scene.add(lbl);
     // Рамы стекла и табличка перед ним (размеры — ДОПУЩЕНИЕ)

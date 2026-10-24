@@ -99,8 +99,8 @@ function beamPoints() {
 }
 const beam = beamPoints();
 scene.add(buildBeam(beam, BEAM_WIDTH));
-// Подписи отрезков: Обнинск — зоны 1, 3, 5; Варшавка — 4; Технополис — 6, 8, 10 (ДОПУЩЕНИЕ: места подписей)
-const SEGMENTS = [['Обнинск', [1, 3, 5]], ['Варшавка', [4]], ['Технополис', [6, 8, 10]]];
+// Подписи отрезков: Обнинск — зоны 1, 2, 3, 5; Варшавка — 4; Технополис — 6–10 (ДОПУЩЕНИЕ: места подписей)
+const SEGMENTS = [['Обнинск', [1, 2, 3, 5]], ['Варшавка', [4]], ['Технополис', [6, 7, 8, 9, 10]]];
 for (const [name, ids] of SEGMENTS) for (const id of ids) {
   const hit = nearestOnPolyline(beam, routes.stops[String(id)]);
   scene.add(floorPill(name, hit.x, hit.z, hit.angle));
