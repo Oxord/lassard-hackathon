@@ -1,3 +1,12 @@
+> ⚠️ Устарело (промежуточный этап). Актуально: output/pdf/trio-presentation.pdf и output/pdf/trio-explanatory-note.pdf.
+
+## Решение
+
+- Страница решения: https://oxord.github.io/lassard-hackathon/solution/
+- Демо (3D-тур): https://oxord.github.io/lassard-hackathon/?tour=1
+- [Презентация PDF](output/pdf/trio-presentation.pdf)
+- [Пояснительная записка PDF](output/pdf/trio-explanatory-note.pdf)
+
 # Лассард: концепция шоурума (хакатон «Открой Моспром»)
 
 ## Комплект команды «Трио» после CP2
