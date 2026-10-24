@@ -6,7 +6,8 @@ import { buildModel } from './models.js';
 import { buildRoom, entrancePoint } from './room.js';
 import { createLabels } from './labels.js';
 import { RED, GRAY, WHITE, BEAM_WIDTH } from './palette.js';
-import { buildBeam, buildBanner, floorPill, nearestOnPolyline } from './decals.js';
+import { buildBeam, buildBanner, floorPill } from './decals.js';
+import { placeFloorPills } from './placement.js';
 
 const COLORS = { red: RED, white: WHITE, gray: GRAY };
 const { w: RW, d: RD } = data.room;
@@ -101,10 +102,9 @@ const beam = beamPoints();
 scene.add(buildBeam(beam, BEAM_WIDTH));
 // Подписи отрезков: Обнинск — зоны 1, 2, 3, 5; Варшавка — 4; Технополис — 6–10 (ДОПУЩЕНИЕ: места подписей)
 const SEGMENTS = [['Обнинск', [1, 2, 3, 5]], ['Варшавка', [4]], ['Технополис', [6, 7, 8, 9, 10]]];
-for (const [name, ids] of SEGMENTS) for (const id of ids) {
-  const hit = nearestOnPolyline(beam, routes.stops[String(id)]);
-  scene.add(floorPill(name, hit.x, hit.z, hit.angle));
-}
+const pillZones = SEGMENTS.flatMap(([name, ids]) => ids.map((id) => ({ name, id })));
+const pillSpots = placeFloorPills(beam, pillZones.map(({ id }) => routes.stops[String(id)]), data.zones, data.room, data.zones.map(bannerSpot));
+pillZones.forEach(({ name }, i) => scene.add(floorPill(name, pillSpots[i].x, pillSpots[i].z, pillSpots[i].angle)));
 const allIds = data.zones.map((z) => z.id);
 setRoute('all');
 
@@ -174,6 +174,8 @@ function walkStep(dt) {
 
 // Автотур: вступление, зоны по кольцу маршрута (route_order) с подписями, стекло цеха, финал
 const PER = 4;
+const TRANSITION = 1.3; // переход между остановками, с; остальное время сегмента — кадр стоит
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2);
 const FRONT = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
 function makeStops() {
   const zoneById = Object.fromEntries(data.zones.map((z) => [z.id, z]));
@@ -208,11 +210,11 @@ function tourStep(dt) {
   const total = tour.stops.length * tour.per;
   if (tour.t >= total) { tourDone = true; toOrbit([0, 24, 30]); setOn('btn-orbit'); return; }
   const f = tour.t / tour.per, i = Math.min(Math.floor(f), tour.stops.length - 1), k = f - i;
-  const a = tour.stops[i], b = tour.stops[Math.min(i + 1, tour.stops.length - 1)];
-  const e = k * k * (3 - 2 * k);
+  const a = tour.stops[Math.max(i - 1, 0)], b = tour.stops[i];
+  const e = easeInOutCubic(Math.min(1, k * tour.per / TRANSITION));
   camera.position.lerpVectors(a.cam, b.cam, e);
   camera.lookAt(new THREE.Vector3().lerpVectors(a.look, b.look, e));
-  $('caption').innerHTML = `${a.title}<br><span style="font-size:16px;color:#595959">${a.sub}</span>`;
+  $('caption').innerHTML = `${b.title}<br><span style="font-size:16px;color:#595959">${b.sub}</span>`;
 }
 window.__tourDone = () => tourDone;
 // Для записи видео: кадр на заданной секунде (Playwright вызывает window.__renderAt(t))
