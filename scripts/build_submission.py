@@ -344,7 +344,7 @@ def prepare_assets():
     logos = [(logo['file'], logo['label']) for logo in DATA['logos'] if (ASSETS / logo['file']).exists()]  # missing logo: no slot at all
     for s in DATA['slides']:
         if s.get('caption'):  # derived copy with the label drawn in; the original render stays untouched
-            captioned(ASSETS / s['image'], ASSETS / f'captioned-{Path(s["image"]).name}', s['caption'], FONT_DIR)
+            captioned(ASSETS / s['image'], ASSETS / f'captioned-{Path(s["image"]).name}', s['caption'], FONT_DIR, s.get('crop'))
             s['image'] = f'captioned-{Path(s["image"]).name}'
         if s.get('image'): s['image'] = asset_or_placeholder(ASSETS, s['image'], s['title'], (1280, 720), FONT_DIR)
         if s.get('images'): s['images'] = [asset_or_placeholder(ASSETS, name, s['title'], (1280, 720), FONT_DIR) for name in s['images']]

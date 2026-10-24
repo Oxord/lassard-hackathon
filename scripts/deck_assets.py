@@ -95,9 +95,16 @@ def plan_slide(src, dst, font_dir, legend=False):  # legend: the plan has a thir
     out.save(dst)
 
 
-def captioned(src, dst, text, font_dir):
-    """Copy an image with a small label in its bottom-left corner (AI renders are marked as such)."""
+def captioned(src, dst, text, font_dir, crop=None):
+    """Copy an image with a small label in its bottom-left corner (AI renders are marked as such).
+
+    crop=(w, h): centre-crop to that aspect first, so the label lands inside the visible frame."""
     image = Image.open(src).convert('RGB')
+    if crop:
+        width = min(image.width, round(image.height * crop[0] / crop[1]))
+        height = min(image.height, round(image.width * crop[1] / crop[0]))
+        left, top = (image.width - width) // 2, (image.height - height) // 2
+        image = image.crop((left, top, left + width, top + height))
     draw = ImageDraw.Draw(image)
     label_font = font(font_dir, max(18, image.width // 56))
     pad = label_font.size // 3
