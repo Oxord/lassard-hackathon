@@ -323,6 +323,9 @@ class Plan:
         return self.grid.snap(self.stop_raw(i), self.aisle, STOP_SNAP_MAX)
 
     def finale_raw(self):
+        viewpoint = self.room.get('viewing_point', {})
+        if viewpoint.get('side') == self.room.get('production_side'):
+            return wall_point(viewpoint['side'], viewpoint['along'], self.room, viewpoint['inset'])
         segs = partition_segments(self.room)
         if not segs:
             return None
@@ -380,7 +383,7 @@ def check_room(plan):
         v.append('production_side=%s: стена внешняя, перегородку с цехом на ней не ставим' % ps)
     elif not partition_segments(room):
         v.append('production_side=%s: на стене нет места под перегородку' % ps)
-    if os_ not in SIDES:
+    if os_ is not None and os_ not in SIDES:
         v.append('office_side=%r: ожидается одно из %s' % (os_, SIDES))
     elif os_ in EXTERNAL_WALLS:
         v.append('office_side=%s: стена внешняя' % os_)
@@ -514,12 +517,17 @@ def check_routes(plan, report):
         if not is_subsequence(s['zones'], order):
             v.append('%s: порядок %s расходится с кольцом route_order — встречный поток' % (s['id'], s['zones']))
     report['routes'] = {}
+    report['circulation_warnings'] = []
     named = [(s['id'], s['zones']) for s in plan.data['scenarios']] + [('all', order)]
     for name, ids in named:
         line, segs, sv = build_route(plan, name, ids, wm)
         v += sv
         for a, b in counterflows(segs):
-            v.append('%s: встречный поток — участок %s → %s идёт навстречу %s → %s' % (name, a['from'], a['to'], b['from'], b['to']))
+            message = '%s: встречный поток — участок %s → %s идёт навстречу %s → %s' % (name, a['from'], a['to'], b['from'], b['to'])
+            if plan.p.get('one_way', True):
+                v.append(message)
+            else:
+                report['circulation_warnings'].append(message)
         report['routes'][name] = {'points': line, 'segments': segs}
     report['width_map'] = wm
     return v

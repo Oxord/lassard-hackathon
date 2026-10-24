@@ -7,6 +7,7 @@
 import json
 import os
 import sys
+import textwrap
 
 import matplotlib
 matplotlib.use('Agg')
@@ -98,7 +99,7 @@ def draw_partition_and_office(ax, plan):
     if side in layout.SIDES and side not in layout.EXTERNAL_WALLS:
         x, y = outside_label_pos(side, room)
         rot = 90 if side in ('east', 'west') else 0
-        ax.text(x, y, 'ЦЕХ · светопрозрачная перегородка с лазерной защитой\n(production_side=%s, ДОПУЩЕНИЕ)' % side,
+        ax.text(x, y, 'ЦЕХ СНИЗУ · CP2; предлагаемая перегородка\nЗащитное исполнение требует проекта' if side == 'south' else 'ЦЕХ · сторона уточняется',
                 ha='center', va='center', rotation=rot, fontsize=8, color=GLASS, fontweight='bold')
     office = room.get('office_side')
     if office in layout.SIDES:
@@ -151,13 +152,14 @@ def draw_polyline(ax, pts, color, lw=2.4, dx=0.0, dy=0.0, ls='-', arrows=True, z
 
 def footer(ax, plan, lines):
     D = plan.room['d']
-    for k, t in enumerate(lines):
+    wrapped = [part for line in lines for part in textwrap.wrap(line, width=165)]
+    for k, t in enumerate(wrapped):
         ax.text(0, D + 2.9 + k * 0.55, t, fontsize=7.6, color='#444', va='top')
 
 
 def assumptions_line(plan):
     room = plan.room
-    return ('ДОПУЩЕНИЯ: зал %g×%g м (626 м² кейса), колонны %g м с шагом 12 м, цех — %s, офис — %s, проёмы сняты со схемы слайда 6. '
+    return ('ПРОЕКТНЫЕ ДОПУЩЕНИЯ: зал %g×%g м (626 м² кейса), колонны %g м, цех — %s, офис — %s. Входы/выходы предлагаемые. '
             '* — габарит DIM_TBD (нет в facts.md); зона = габарит + 2×%g м обслуживания.'
             % (room['w'], room['d'], room['columns']['size'], SIDE_RU.get(room.get('production_side'), '?'),
                SIDE_RU.get(room.get('office_side'), '?'), plan.p['service']))
@@ -188,13 +190,13 @@ def passport_legend(plan):
     parts = [('%s %s' % (CIRCLED[s['n'] - 1], s['text'])) if s['zone'] == 'finale'
              else ('%s зона %s — %s' % (CIRCLED[s['n'] - 1], s['zone'], s['text']))
              for s in ps.get('stations', [])]
-    return ['Этапы «Паспорта детали» (жёлтые кружки): ' + ' · '.join(parts) + '.',
-            'ДОПУЩЕНИЕ: клиенту — индивидуальная деталь, группе — одна общая табличка; время гравировки и номер реестра уточнить у эксперта.']
+    return ['Карта визита и примеры обработки (жёлтые кружки): ' + ' · '.join(parts) + '.',
+            'Карта визита не требует сувенира. Изготовление детали при посетителе — дополнительная опция после согласования.']
 
 
 def plan_zones(plan, report):
     fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120)
-    draw_room(ax, plan, 'Планировка 1. Зонирование по сетке колонн 12×12 м и маршрут «Паспорт детали»')
+    draw_room(ax, plan, 'ТРИО · «Путь станка» · Предлагаемая планировка после CP2')
     for i in plan.zones:
         draw_zone(ax, plan, i)
     route = report['routes']['all']
@@ -215,8 +217,8 @@ def plan_zones(plan, report):
     widths = [s['min_width'] for r in report['routes'].values() for s in r['segments'] if not str(s['from']).startswith('проём') and not str(s['to']).startswith('проём')]
     footer(ax, plan, passport_legend(plan) + [
         'Красный: рабочая зона · Белый: декоративная · Серый: техника · жирная рамка: закрытое помещение · '
-        'жёлтая линия: односторонний маршрут (вход → запад → север → восток → стекло цеха → 13 или проём 2)',
-        'Подписи на маршруте — ширина прохода; наименьшая по всем маршрутам %s м (требование ≥%s м на группу %d чел., ДОПУЩЕНИЕ, ПРОВЕРИТЬ СП 1.13130).'
+        'жёлтая линия: маршрут с сопровождением; у смотровой точки допускается возврат. Одновременно одна группа.',
+        'Подписи — свободная ширина в модели: минимум %s м (проектный порог ≥%s м, группа до %d чел.). Это не нормативный расчет.'
         % (('%.1f' % min(widths)).replace('.', ','), ('%g' % plan.p['aisle_min']).replace('.', ','), plan.p['group_max']),
         assumptions_line(plan)])
     fig.savefig(os.path.join(OUT, 'plan-zones.png'), bbox_inches='tight')
@@ -249,11 +251,10 @@ def plan_safety(plan, report):
             draw_polyline(ax, layout.simplify([plan.grid.point(k) for k in cells], 0.25), EXIT, lw=1.3, ls='--', arrows=False, zorder=6)
             ax.plot(*p, 'o', ms=3.5, color=EXIT, zorder=7)
     footer(ax, plan, [
-        '▨ Излучение: станки 6, 7, 8 в штатных защитных кожухах; ручные аппараты — только в закрытой кабине 12 '
-        '(смотровое окно с лазерной защитой, дверь с блокировкой; ПРОВЕРИТЬ ГОСТ IEC 60825-1). 9 — витрина обесточенных аппаратов.',
-        '■ В: местная вытяжка (кабина 12 — через внешнюю северную стену, вопрос трекерам). Автоматическое пожаротушение '
-        'в лазерных зонах, сигнализация во всём зале (ПРОВЕРИТЬ СП 484/485).',
-        'Пунктир: путь эвакуации шириной ≥%s м к ближайшему проёму; наибольший %s м (норматив ПРОВЕРИТЬ СП 1.13130). Два проёма, проход к проёму 2 — прямо из зала.'
+        '▨ Возможные демонстрации: 6, 7 — только в подтвержденном защитном исполнении; сварка/очистка — в кабине 12 после согласования. '
+        'Зона 8 — цифровой показ роботизации; 9 — обесточенные аппараты и образцы. Без открытого луча в общем зале.',
+        '■ В: требуемые точки подключения вытяжки. Схемы вентиляции, пожарной защиты и защиты от лазерного излучения подлежат проектированию.',
+        'Пунктир: проверенный в модели путь ≥%s м к предлагаемому выходу; наибольший %s м. Это не утвержденная схема эвакуации.'
         % (('%g' % plan.p['evac_min']).replace('.', ','), ('%.0f' % worst)),
         assumptions_line(plan)])
     fig.savefig(os.path.join(OUT, 'plan-safety.png'), bbox_inches='tight')
@@ -262,7 +263,7 @@ def plan_safety(plan, report):
 
 def plan_flows(plan, report):
     fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120)
-    draw_room(ax, plan, 'Планировка 3. Маршруты четырёх аудиторий (односторонние)')
+    draw_room(ax, plan, 'Четыре сценария на общем маршруте · точки внимания различаются')
     for i in plan.zones:
         draw_zone(ax, plan, i, alpha=0.3)
     lane = {'client': (-0.45, -0.45), 'partner': (-0.15, -0.15), 'edu': (0.15, 0.15), 'gov': (0.45, 0.45)}
@@ -298,6 +299,8 @@ def print_report(violations, report):
     print('Проверка планировки: нарушений %d' % len(violations))
     for v in violations:
         print('  НАРУШЕНИЕ:', v)
+    for warning in report.get('circulation_warnings', []):
+        print('  ОРГАНИЗАЦИЯ ПОТОКА (одна группа с сопровождением):', warning)
     for k, r in report.get('routes', {}).items():
         segs = r['segments']
         if segs:
