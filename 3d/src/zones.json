@@ -267,7 +267,7 @@
    "z": -6.7,
    "w": 2.8,
    "d": 2.4,
-   "kind": "red",
+   "kind": "gray",
    "model": "rack",
    "front": "S",
    "dims": {
@@ -366,7 +366,7 @@
    "z": -4.2,
    "w": 2.4,
    "d": 2.4,
-   "kind": "gray",
+   "kind": "red",
    "model": "robot",
    "front": "W",
    "dims": {
@@ -416,7 +416,7 @@
    "z": 4.7,
    "w": 3,
    "d": 2.4,
-   "kind": "red",
+   "kind": "white",
    "model": "sampledesk",
    "front": "W",
    "dims": {

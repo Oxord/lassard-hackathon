@@ -63,8 +63,7 @@ def wrap(s, limit):
 
 def timeline():
     events = [
-        ("2008", "Группа компаний «Вартон», в которую входит «Лассард», начинает работу", "lassard.ru/about/company"),
-        ("2015", "Полный цикл производства; основание в Калуге", "сайт (2015); Калуга — по кейсу"),
+        ("2015", "Полный цикл производства; основание в Калуге", "Кейс ЛАССАРД, слайд 3; lassard.ru"),
         ("2021", "Победа в конкурсе Минпромторга на ОКР «Листопад» (08.11)", "kommersant.ru/doc/5065569"),
         ("2023", "Запуск производства в ОЭЗ «Технополис Москва» (весна)", "photonics.su"),
         ("03.2026", "Проект «Лазерный класс» (24.03)", "lassard.ru/news/laser-room"),
@@ -83,7 +82,7 @@ def timeline():
         for j, ln in enumerate(lines):
             parts.append(text(cx, y + 90 + j * 38, ln, 28, INK, "normal", "middle"))
         parts.append(text(cx, y + 110 + len(lines) * 38, src, 20, MID, "normal", "middle"))
-    parts.append(footnote("Источник: facts/facts.md §3. Калуга подтверждена только постановкой кейса."))
+    parts.append(footnote("Источники: Кейс ЛАССАРД, слайд 3; lassard.ru; kommersant.ru; photonics.su; mos.ru."))
     return svg_doc("История Лассард", "".join(parts))
 
 
@@ -114,7 +113,7 @@ def numbers():
         if note:
             for j, ln in enumerate(wrap(note, 40)):
                 parts.append(text(x + 40, y + th - 50 + j * 24, ln, 18, MID))
-    parts.append(footnote("Источник: постановка кейса (facts/facts.md §1)."))
+    parts.append(footnote("Источник: Кейс ЛАССАРД, слайд 3."))
     return svg_doc("Лассард в цифрах", "".join(parts))
 
 
@@ -142,7 +141,7 @@ def poly(pts, fill):
 def geo_map():
     parts = [heading("Где «Лассард»"), poly(RUSSIA, LIGHT), poly(BELARUS, MID)]
     # (город, подпись, lon, lat, y карточки); карточки слева внизу, выноски к точкам
-    cities = [("Калуга", "старт (по кейсу)", 36.26, 54.51, 260),
+    cities = [("Калуга", "старт, 2015", 36.26, 54.51, 260),
               ("Обнинск", "лазеры и компоненты", 36.6, 55.1, 390),
               ("Москва", "Технополис · Варшавское шоссе", 37.6, 55.75, 520)]
     card_x, card_w = 96, 400
@@ -160,7 +159,7 @@ def geo_map():
     parts.append(f'<rect x="1020" y="840" width="804" height="150" fill="{RED}"/>')
     parts.append(text(1422, 920, "Москва + 40 регионов + Беларусь", 46, WHITE, "bold", "middle"))
     parts.append(text(1422, 962, "поставки: Москва, 40 регионов России, экспорт в Беларусь", 22, WHITE, "normal", "middle"))
-    parts.append(footnote("Не в масштабе. Источник: facts/facts.md §1–2."))
+    parts.append(footnote("Не в масштабе. Источник: Кейс ЛАССАРД, слайд 3; lassard.ru/about/company."))
     return svg_doc("Карта присутствия", "".join(parts))
 
 

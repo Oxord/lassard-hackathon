@@ -334,14 +334,14 @@ def build_teaser_html():
 
 
 def prepare_assets():
-    """Derived plans, QR code and logos (or placeholders); returns [(asset name, label)] for logos."""
+    """Derived plans, QR code and logos (missing logos are skipped); returns [(asset name, label)] for logos."""
     for name in ['plan-zones.png','plan-flows.png','plan-safety.png']:
         shutil.copyfile(ROOT/'plan'/name,ASSETS/name)
     for src, dst, legend in PLAN_SLIDES:
         plan_slide(ROOT/'plan'/src, ASSETS/dst, FONT_DIR, legend)
     if not qr_code(DATA['pages_url'], ASSETS/'qr-pages.png'):
         print('qrcode package missing: QR placeholder used')
-    logos = [(asset_or_placeholder(ASSETS, logo['file'], logo['label'], (480, 120), FONT_DIR), logo['label']) for logo in DATA['logos']]
+    logos = [(logo['file'], logo['label']) for logo in DATA['logos'] if (ASSETS / logo['file']).exists()]  # missing logo: no slot at all
     for s in DATA['slides']:
         if s.get('image'): s['image'] = asset_or_placeholder(ASSETS, s['image'], s['title'], (1280, 720), FONT_DIR)
         if s.get('images'): s['images'] = [asset_or_placeholder(ASSETS, name, s['title'], (1280, 720), FONT_DIR) for name in s['images']]
