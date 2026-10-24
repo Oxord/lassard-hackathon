@@ -95,6 +95,19 @@ def plan_slide(src, dst, font_dir, legend=False):  # legend: the plan has a thir
     out.save(dst)
 
 
+def captioned(src, dst, text, font_dir):
+    """Copy an image with a small label in its bottom-left corner (AI renders are marked as such)."""
+    image = Image.open(src).convert('RGB')
+    draw = ImageDraw.Draw(image)
+    label_font = font(font_dir, max(18, image.width // 56))
+    pad = label_font.size // 3
+    left, top, right, bottom = draw.textbbox((0, 0), text, font=label_font)
+    x, y = pad * 2, image.height - pad * 2 - (bottom - top)
+    draw.rectangle((x - pad, y - pad, x + (right - left) + pad, y + (bottom - top) + pad), fill=WHITE)
+    draw.text((x, y - top), text, fill=INK, font=label_font)
+    image.save(dst)
+
+
 def qr_code(url, dst):
     """QR code to the public model; False when the qrcode package is missing."""
     try:
