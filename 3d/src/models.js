@@ -84,6 +84,12 @@ const builders = {
     box(0.35, 1.5, 0.35, RED, 0, 0.7, 0, g).rotation.z = 0.35;
     box(0.3, 1.3, 0.3, WHITE, 0.55, 1.9, 0, g).rotation.z = -0.9;
     box(0.2, 0.5, 0.2, GRAY, 1.15, 2.2, 0, g);
+    // Защитное ограждение: красные стойки по углам, серые перила, прозрачные панели
+    for (const x of [-1.7, 1.7]) for (const z of [-1.5, 1.5]) box(0.08, 2.2, 0.08, RED, x, 0.2, z, g);
+    for (const y of [0.9, 2.3]) {
+      box(3.4, 0.05, 0.05, GRAY, 0, y, -1.5, g); box(3.4, 0.05, 0.05, GRAY, 0, y, 1.5, g);
+      box(0.05, 0.05, 3.0, GRAY, -1.7, y, 0, g); box(0.05, 0.05, 3.0, GRAY, 1.7, y, 0, g);
+    }
     const cell = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.2, 3.0), glassMat());
     cell.position.set(0, 1.3, 0);
     g.add(cell);
