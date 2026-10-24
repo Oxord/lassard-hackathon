@@ -167,7 +167,7 @@ def cycle():
     # Диоды/источники ↔ площадки — ДОПУЩЕНИЕ по кейсу: Обнинск — лазеры и компоненты, Варшавка — лазеры.
     nodes = [("Кристалл", "выращивание", "Обнинск"),
              ("Квантрон / диод", "накачка", "Обнинск"),
-             ("Источник", "лазер", "Варшавское ш. — волоконные; Обнинск — твердотельные"),
+             ("Источник", "лазер", "Варшавское ш. — волоконные;\nОбнинск — твердотельные"),
              ("Оптика", "оптомеханика", "Обнинск"),
              ("Станок", "резка · гравировка · сварка", "Технополис Москва")]
     y, bw, bh = 450, 290, 170
@@ -186,7 +186,12 @@ def cycle():
         parts.append(f'<line x1="{x + bw / 2}" y1="{y + bh}" x2="{x + bw / 2}" y2="{y + bh + 70}" stroke="{MID}" stroke-width="3"/>')
         parts.append(f'<rect x="{x}" y="{y + bh + 70}" width="{bw}" height="70" fill="{PALE}"/>')
         parts.append(f'<rect x="{x}" y="{y + bh + 70}" width="{bw}" height="8" fill="{MID}"/>')
-        parts.append(text(x + bw / 2, y + bh + 120, site, 26, INK, "bold", "middle"))
+        site_lines = site.split("\n")
+        if len(site_lines) == 1:
+            parts.append(text(x + bw / 2, y + bh + 120, site, 26, INK, "bold", "middle"))
+        else:
+            for k, line in enumerate(site_lines):
+                parts.append(text(x + bw / 2, y + bh + 108 + 26 * k, line, 18, INK, "bold", "middle"))
     parts.append(footnote("Источник: lassard.ru/about/company, photonics.su."))
     return svg_doc("Цикл производства", "".join(parts))
 
