@@ -25,7 +25,7 @@ LABEL_GREEN = (27, 158, 58)
 ROUTE_GREEN = (44, 160, 44)            # «Учебная группа» route crosses the labels
 PLAN_BG = (247, 247, 247)             # BG in plan/make_plan.py
 NORTH_NOTE = (500, 62, 1050, 88)       # note on the north wall, crop coordinates
-GLASS_LABEL = '▲  СТЕКЛО В ЦЕХ — производство видно с маршрута'
+GLASS_LABEL = '▲  СМОТРОВОЕ СТЕКЛО 12×3 м (оси A–B) — финал луча'
 
 
 def font(font_dir, size, bold=False):
