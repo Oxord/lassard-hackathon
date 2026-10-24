@@ -250,7 +250,7 @@ NOTE_TITLE = DATA['title']
 NOTE_CONTENT_WIDTH = 503.28
 NOTE_IMAGE_MAX_HEIGHT = 250
 # Section index -> (image, number of paragraphs/tables after which it is placed; None = at the end).
-NOTE_IMAGES = {0: ('overview.png', 2), 1: ('slide-plan-zones.png', 1), 2: ('slide-plan-flows.png', 1), 5: ('slide-plan-safety.png', 1)}
+NOTE_IMAGES = {0: ('overview.png', 2), 1: ('slide-plan-zones.png', 1), 2: ('slide-plan-flows.png', 3), 5: ('slide-plan-safety.png', 1)}
 # Column widths by table header; other tables share the width equally.
 NOTE_TABLE_WIDTHS = {
     ('Строка', 'Цель, млн', 'Диапазон', 'Основа'): [100, 45, 60, 298.28],
