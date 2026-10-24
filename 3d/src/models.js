@@ -146,9 +146,7 @@ const builders = {
     box(0.2, 0.74, 0.8, GRAY, 0, 0, 0, g);
     for (let i = 0; i < 5; i++) for (const z of [-1.1, 1.1]) box(0.5, 0.45, 0.5, DARK, -1.6 + i * 0.8, 0, z, g);
     box(1.8, 1.0, 0.06, DARK, 0, 1.0, -1.85, g);
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(5.8, 2.6, 0.05), glassMat());
-    wall.position.set(0, 1.3, 1.95);
-    g.add(wall);
+    // Открытая переговорная зона после CP2: отдельные стеклянные стены не предлагаются.
   },
   passport(g) {
     // киоск «Паспорт детали»: выдача пластины и QR-паспорта

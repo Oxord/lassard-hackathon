@@ -45,6 +45,7 @@ data.zones.forEach((z) => {
   byId[z.id] = m;
 
   const model = fitModel(buildModel(z.model), z);
+  if (z.model === 'booth' && z.front === 'N') model.rotation.y += Math.PI;
   model.position.set(z.x, 0.18, z.z);
   scene.add(model);
 
@@ -151,13 +152,14 @@ function makeStops() {
     };
   });
   const [fx, fz] = routes.finale;
+  const [nx, nz] = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] }[data.room.production_side];
   const glass = {
-    title: '<b>Финал:</b> цех за стеклом', sub: 'Светопрозрачная перегородка с лазерной защитой: реальное производство без нарушения техники безопасности',
-    cam: new THREE.Vector3(fx - Math.sign(fx) * 6, 3.2, fz), look: new THREE.Vector3(fx + Math.sign(fx) * 4, 2.0, fz),
+    title: '<b>Вид на цех</b>', sub: 'Цех снизу схемы по CP2. Перегородка и защитное исполнение предлагаются и требуют согласования',
+    cam: new THREE.Vector3(fx - nx * 4, 3.2, fz - nz * 4), look: new THREE.Vector3(fx + nx * 3, 2.0, fz + nz * 3),
   };
   zs.splice(zs.length - 1, 0, glass);
-  const intro = { title: '<b>ЛАССАРД</b>: «Путь станка»', sub: 'Шоурум 626 м²: от кристалла до готового станка', cam: new THREE.Vector3(0, 22, 27), look: new THREE.Vector3(0, 0, 0) };
-  const outro = { title: 'От выращивания кристалла до сборки станка', sub: '80% локализации · полный цикл · реестр Минпромторга', cam: new THREE.Vector3(0, 30, 3), look: new THREE.Vector3(0, 0, 0) };
+  const intro = { title: '<b>Трио · ЛАССАРД</b>: «Путь станка»', sub: 'Концепция шоурума: компоненты, компактное оборудование и задача посетителя', cam: new THREE.Vector3(0, 22, 27), look: new THREE.Vector3(0, 0, 0) };
+  const outro = { title: 'Понять процесс. Сравнить результат. Обсудить задачу', sub: 'Концепция после CP2 · планировка и защитные решения требуют согласования', cam: new THREE.Vector3(0, 30, 3), look: new THREE.Vector3(0, 0, 0) };
   return [intro, ...zs, outro];
 }
 function startTour() {
