@@ -20,10 +20,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1] if len(sys.argv) > 1 else HERE
 ROUTES_JSON = os.path.join(HERE, '..', '3d', 'src', 'routes.json')
 
-RED, WHITE, GRAY, DARK = '#c8102e', '#f2f2f2', '#8a9099', '#14161a'
-GLASS, EXIT, ROUTE = '#3b9fd8', '#1b9e3a', '#ffb000'
+# Палитра из scripts/make_infographics.py: красный и серые, без чёрного
+RED, WHITE, GRAY, DARK = '#DD191C', '#FFFFFF', '#7F7F7F', '#595959'
+GLASS, EXIT, ROUTE = '#7FB2D9', '#1b9e3a', '#DD191C'
+ROLE_GRAY = '#8C8C8C'   # тонкий пунктир маршрутов ролей
+BG, BEAM_LW = '#F7F7F7', 7   # светлый фон; толщина красной полосы «Луча»
 FILL = {'red': RED, 'white': WHITE, 'gray': GRAY}
-SC_COL = {'client': '#c8102e', 'partner': '#1f77b4', 'edu': '#2ca02c', 'gov': '#9467bd'}
+SC_COL = {'client': ROLE_GRAY, 'partner': ROLE_GRAY, 'edu': ROLE_GRAY, 'gov': ROLE_GRAY}
 LASER_MODELS = ('cutter', 'engraver', 'robot', 'booth')   # зоны с излучением (станки в кожухах, кабина 12)
 SHORT = {'Вход: история и география': 'Вход: история', 'Роботизированные ячейки': 'Роботы',
          'Ручные лазерные аппараты: витрина': 'Ручные\nвитрина', 'Закрытая кабина ручных аппаратов': 'Кабина\nручных',
@@ -50,7 +53,7 @@ def draw_room(ax, plan, title):
     ax.set_ylim(D + 4.6, -3.4)
     ax.set_aspect('equal')
     ax.axis('off')
-    ax.add_patch(Rectangle((0, 0), W, D, fc='#fbfbfc', ec='none', zorder=0))
+    ax.add_patch(Rectangle((0, 0), W, D, fc=BG, ec='none', zorder=0))
     for side in layout.SIDES:   # стены: внешняя — толстая чёрная
         (a, b) = wall_line(side, room)
         ext = side in layout.EXTERNAL_WALLS
@@ -99,7 +102,7 @@ def draw_partition_and_office(ax, plan):
     if side in layout.SIDES and side not in layout.EXTERNAL_WALLS:
         x, y = outside_label_pos(side, room)
         rot = 90 if side in ('east', 'west') else 0
-        ax.text(x, y, 'ЦЕХ СНИЗУ · CP2; предлагаемая перегородка\nЗащитное исполнение требует проекта' if side == 'south' else 'ЦЕХ · сторона уточняется',
+        ax.text(x, y, 'Стекло в цех\n80% локализации · реестр Минпромторга' if side == 'south' else 'ЦЕХ · сторона уточняется',
                 ha='center', va='center', rotation=rot, fontsize=8, color=GLASS, fontweight='bold')
     office = room.get('office_side')
     if office in layout.SIDES:
@@ -150,6 +153,22 @@ def draw_polyline(ax, pts, color, lw=2.4, dx=0.0, dy=0.0, ls='-', arrows=True, z
             arrow(ax, (xs[-2], ys[-2]), (xs[-1], ys[-1]), color, lw=lw)
 
 
+def draw_beam(ax, pts):
+    """«Луч ЛАССАРД»: красная непрерывная полоса от стены истории к стеклу цеха."""
+    ax.plot([p[0] for p in pts], [p[1] for p in pts], color=RED, lw=BEAM_LW, solid_joinstyle='round',
+            solid_capstyle='round', alpha=0.9, zorder=6)
+
+
+def draw_legend(ax, plan, role=False):
+    items = [ax.plot([], [], color=RED, lw=BEAM_LW / 1.5, label='Луч ЛАССАРД — основной маршрут')[0]]
+    if role:
+        items.append(ax.plot([], [], color=ROLE_GRAY, lw=1.2, ls='--', label='Маршрут роли (тонкий пунктир)')[0])
+    items.append(ax.plot([], [], color=GLASS, lw=5, label='Стекло в цех (юг)')[0])
+    room = plan.room   # под линией стекла, правее подписи «Стекло в цех»
+    ax.legend(handles=items, loc='upper right', bbox_to_anchor=(room['w'] + 3.2, room['d'] + 0.7), bbox_transform=ax.transData,
+              fontsize=8.5, frameon=True, facecolor='white', edgecolor=GRAY)
+
+
 def footer(ax, plan, lines):
     D = plan.room['d']
     wrapped = [part for line in lines for part in textwrap.wrap(line, width=165)]
@@ -195,12 +214,12 @@ def passport_legend(plan):
 
 
 def plan_zones(plan, report):
-    fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120)
+    fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120, facecolor='white')
     draw_room(ax, plan, 'ТРИО · «Путь станка» · Предлагаемая планировка после CP2')
     for i in plan.zones:
         draw_zone(ax, plan, i)
     route = report['routes']['all']
-    draw_polyline(ax, route['points'], ROUTE)
+    draw_beam(ax, route['points'])
     for s in route['segments']:   # ширина прохода (поперёк) в середине длинных сегментов
         if s['length'] > 4 and not str(s['from']).startswith('проём'):
             a, b = s['points'][len(s['points']) // 2 - 1], s['points'][len(s['points']) // 2]
@@ -213,11 +232,12 @@ def plan_zones(plan, report):
     f = plan.finale()
     ax.plot(*f, marker='*', ms=16, color=GLASS, mec=DARK, zorder=9)
     ax.text(f[0], f[1] + 0.9, 'Финал:\nвид на цех', ha='center', va='top', fontsize=7, color=GLASS, fontweight='bold', zorder=9)
+    draw_legend(ax, plan)
     draw_passport(ax, plan)
     widths = [s['min_width'] for r in report['routes'].values() for s in r['segments'] if not str(s['from']).startswith('проём') and not str(s['to']).startswith('проём')]
     footer(ax, plan, passport_legend(plan) + [
         'Красный: рабочая зона · Белый: декоративная · Серый: техника · жирная рамка: закрытое помещение · '
-        'жёлтая линия: маршрут с сопровождением; у смотровой точки допускается возврат. Одновременно одна группа.',
+        'красная полоса: «Луч» с сопровождением; у смотровой точки допускается возврат. Одновременно одна группа.',
         'Подписи — свободная ширина в модели: минимум %s м (проектный порог ≥%s м, группа до %d чел.). Это не нормативный расчет.'
         % (('%.1f' % min(widths)).replace('.', ','), ('%g' % plan.p['aisle_min']).replace('.', ','), plan.p['group_max']),
         assumptions_line(plan)])
@@ -226,7 +246,7 @@ def plan_zones(plan, report):
 
 
 def plan_safety(plan, report):
-    fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120)
+    fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120, facecolor='white')
     draw_room(ax, plan, 'Планировка 2. Безопасность: лазерные зоны, вытяжки, эвакуация')
     for i in plan.zones:
         draw_zone(ax, plan, i, alpha=0.35)
@@ -252,7 +272,7 @@ def plan_safety(plan, report):
             ax.plot(*p, 'o', ms=3.5, color=EXIT, zorder=7)
     footer(ax, plan, [
         '▨ Возможные демонстрации: 6, 7 — только в подтвержденном защитном исполнении; сварка/очистка — в кабине 12 после согласования. '
-        'Зона 8 — цифровой показ роботизации; 9 — обесточенные аппараты и образцы. Без открытого луча в общем зале.',
+        'Зона 8 — робот-манипулятор с гравером в защитном ограждении (показ оператором); 9 — обесточенные аппараты и образцы. Без открытого луча в общем зале.',
         '■ В: требуемые точки подключения вытяжки. Схемы вентиляции, пожарной защиты и защиты от лазерного излучения подлежат проектированию.',
         'Пунктир: проверенный в модели путь ≥%s м к предлагаемому выходу; наибольший %s м. Это не утвержденная схема эвакуации.'
         % (('%g' % plan.p['evac_min']).replace('.', ','), ('%.0f' % worst)),
@@ -262,15 +282,16 @@ def plan_safety(plan, report):
 
 
 def plan_flows(plan, report):
-    fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120)
+    fig, ax = plt.subplots(figsize=(16, 9.4), dpi=120, facecolor='white')
     draw_room(ax, plan, 'Четыре сценария на общем маршруте · точки внимания различаются')
     for i in plan.zones:
         draw_zone(ax, plan, i, alpha=0.3)
+    draw_beam(ax, report['routes']['all']['points'])
     lane = {'client': (-0.45, -0.45), 'partner': (-0.15, -0.15), 'edu': (0.15, 0.15), 'gov': (0.45, 0.45)}
     for s in plan.data['scenarios']:
         pts = report['routes'][s['id']]['points']
         dx, dy = lane.get(s['id'], (0, 0))
-        draw_polyline(ax, pts, SC_COL[s['id']], lw=2.0, dx=dx, dy=dy)
+        draw_polyline(ax, pts, SC_COL[s['id']], lw=0.9, dx=dx, dy=dy, ls='--')
         for i in s['zones']:
             p = plan.stop(i)
             ax.plot(p[0] + dx, p[1] + dy, 'o', ms=4.5, color=SC_COL[s['id']], zorder=9)
@@ -279,7 +300,7 @@ def plan_flows(plan, report):
                 label='%s: %s' % (s['name'], ' → '.join(str(i) for i in s['zones'] if plan.zones[i]['model'] != 'meeting') + ' → ' + ends))
     draw_passport(ax, plan)
     footer(ax, plan, passport_legend(plan))
-    ax.legend(loc='upper left', bbox_to_anchor=(0.0, 0.0), ncol=2, fontsize=8.5, frameon=False)
+    draw_legend(ax, plan, role=True)
     fig.savefig(os.path.join(OUT, 'plan-flows.png'), bbox_inches='tight')
     plt.close(fig)
 

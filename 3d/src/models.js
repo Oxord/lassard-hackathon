@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-
-const RED = 0xc8102e, WHITE = 0xf2f2f2, GRAY = 0x6b727c, DARK = 0x2b2f36, GLASS = 0x88ccff;
+import { RED, WHITE, GRAY, GRAY_DARK as DARK, GLASS } from './palette.js';
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.2, ...o });
 const glassMat = () => new THREE.MeshPhysicalMaterial({ color: GLASS, transparent: true, opacity: 0.28, roughness: 0.05 });
 
@@ -17,12 +16,6 @@ function cyl(r, h, c, x, y, z, g, rot) {
   g.add(m);
   return m;
 }
-function banner(g, x, z) {
-  // стойка-штандарт: серая база, красное полотно
-  box(0.5, 0.05, 0.5, GRAY, x, 0, z, g);
-  box(0.04, 2.2, 0.04, GRAY, x, 0.05, z, g);
-  box(0.6, 1.2, 0.03, RED, x, 1.0, z, g);
-}
 
 const builders = {
   wall(g) {
@@ -36,7 +29,6 @@ const builders = {
     cyl(0.5, 2.6, RED, 0, 0, 0, g);
     cyl(0.15, 0.7, 0x99d6a8, 0, 2.6, 0, g);
     box(1.6, 0.9, 0.9, WHITE, 1.6, 0, 0.5, g);
-    banner(g, -2.3, 1.2);
   },
   quantron(g) {
     box(3.6, 0.8, 1.4, WHITE, 0, 0, 0, g);
@@ -44,7 +36,6 @@ const builders = {
     const cover = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.0, 1.2), glassMat());
     cover.position.set(0, 1.3, 0);
     g.add(cover);
-    banner(g, -2.3, 1.2);
   },
   showcase(g) {
     for (let i = -1; i <= 1; i++) {
@@ -54,7 +45,6 @@ const builders = {
       g.add(c);
       for (let k = 0; k < 3; k++) box(0.05, 0.3, 0.5, RED, i * 1.5 - 0.3 + k * 0.3, 0.9, 0, g);
     }
-    banner(g, 2.5, 1.3);
   },
   rack(g) {
     for (let i = -1; i <= 1; i++) {
@@ -62,7 +52,6 @@ const builders = {
       box(0.8, 0.12, 0.02, RED, i * 1.2, 1.6, 0.46, g);
       box(0.8, 0.5, 0.02, DARK, i * 1.2, 0.7, 0.46, g);
     }
-    banner(g, -2.6, 1.3);
   },
   optical(g) {
     box(3.6, 0.1, 1.6, GRAY, 0, 0.85, 0, g);
@@ -95,6 +84,12 @@ const builders = {
     box(0.35, 1.5, 0.35, RED, 0, 0.7, 0, g).rotation.z = 0.35;
     box(0.3, 1.3, 0.3, WHITE, 0.55, 1.9, 0, g).rotation.z = -0.9;
     box(0.2, 0.5, 0.2, GRAY, 1.15, 2.2, 0, g);
+    // Защитное ограждение: красные стойки по углам, серые перила, прозрачные панели
+    for (const x of [-1.7, 1.7]) for (const z of [-1.5, 1.5]) box(0.08, 2.2, 0.08, RED, x, 0.2, z, g);
+    for (const y of [0.9, 2.3]) {
+      box(3.4, 0.05, 0.05, GRAY, 0, y, -1.5, g); box(3.4, 0.05, 0.05, GRAY, 0, y, 1.5, g);
+      box(0.05, 0.05, 3.0, GRAY, -1.7, y, 0, g); box(0.05, 0.05, 3.0, GRAY, 1.7, y, 0, g);
+    }
     const cell = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.2, 3.0), glassMat());
     cell.position.set(0, 1.3, 0);
     g.add(cell);

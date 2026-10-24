@@ -5,14 +5,16 @@ import routes from './routes.json';
 import { buildModel } from './models.js';
 import { buildRoom, entrancePoint } from './room.js';
 import { createLabels } from './labels.js';
+import { RED, GRAY, WHITE, BEAM_WIDTH } from './palette.js';
+import { buildBeam, buildBanner, floorPill, nearestOnPolyline } from './decals.js';
 
-const COLORS = { red: 0xc8102e, white: 0xf2f2f2, gray: 0x8a9099 };
+const COLORS = { red: RED, white: WHITE, gray: GRAY };
 const { w: RW, d: RD } = data.room;
 const $ = (id) => document.getElementById(id);
 
 const app = $('app');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x14161a);
+scene.background = new THREE.Color(0xf4f4f4);
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 300);
 camera.position.set(0, 24, 30);
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -22,7 +24,7 @@ app.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.maxPolarAngle = Math.PI / 2.02;
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 1.0));
+scene.add(new THREE.HemisphereLight(0xffffff, 0xbdbdbd, 1.6));
 const sun = new THREE.DirectionalLight(0xffffff, 1.2);
 sun.position.set(10, 30, 10);
 scene.add(sun);
@@ -49,10 +51,21 @@ data.zones.forEach((z) => {
   model.position.set(z.x, 0.18, z.z);
   scene.add(model);
 
+  const banner = buildBanner(z.name);
+  const [bx, bz] = bannerSpot(z);
+  banner.position.set(bx, 0.17, bz);
+  scene.add(banner);
+
   const sp = label(String(z.id), 1);
   sp.position.set(z.x, 4.3, z.z);
   scene.add(sp);
 });
+
+// Стойка-штандарт: у переднего угла зоны (front — сторона подхода), внутри полосы обслуживания
+function bannerSpot(z) {
+  const [fx, fz] = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }[z.front] || [0, 1];
+  return fx ? [z.x + fx * (z.w / 2 - 0.3), z.z - z.d / 2 + 0.35] : [z.x - z.w / 2 + 0.35, z.z + fz * (z.d / 2 - 0.3)];
+}
 
 // Модель вписываем в габарит зоны: поворот на 90°, если длинные стороны не совпадают, и уменьшение до зоны
 function fitModel(model, z) {
@@ -63,13 +76,34 @@ function fitModel(model, z) {
   return model;
 }
 
-// Маршрут: полилинии по проходам из routes.json (генерирует plan/make_plan.py)
-let route = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffd400 }));
+// Маршруты ролей: тонкий серый пунктир по проходам из routes.json (генерирует plan/make_plan.py)
+let route = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: GRAY, dashSize: 0.35, gapSize: 0.25 }));
 scene.add(route);
 function setRoute(key) {
-  const pts = (routes.routes[key] || routes.routes.all).map(([x, z]) => new THREE.Vector3(x, 0.3, z));
+  const pts = (routes.routes[key] || routes.routes.all).map(([x, z]) => new THREE.Vector3(x, 0.26, z));
   route.geometry.dispose();
   route.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+  route.computeLineDistances();
+}
+
+// «Луч ЛАССАРД»: непрерывная красная полоса от стены истории через зоны 1–10 к стеклу цеха.
+// Ломаная — участок основного маршрута all от остановки 0 до остановки 10, далее по свободному проходу к стеклу (ДОПУЩЕНИЕ).
+const BEAM_GLASS_X = -3.4, BEAM_GLASS_Z = 7.75;
+function beamPoints() {
+  const all = routes.routes.all;
+  const near = (p) => all.reduce((bi, q, i) => (Math.hypot(q[0] - p[0], q[1] - p[1]) < Math.hypot(all[bi][0] - p[0], all[bi][1] - p[1]) ? i : bi), 0);
+  const from = near(routes.stops['0']), to = near(routes.stops['10']);
+  const lane = all[from + 1] ? all.slice(from, to + 1) : all;
+  const back = lane[lane.length - 1];
+  return [...lane, [back[0], 2.45], [BEAM_GLASS_X, 2.45], [BEAM_GLASS_X, BEAM_GLASS_Z]];
+}
+const beam = beamPoints();
+scene.add(buildBeam(beam, BEAM_WIDTH));
+// Подписи отрезков: Обнинск — зоны 1, 2, 3, 5; Варшавка — 4; Технополис — 6–10 (ДОПУЩЕНИЕ: места подписей)
+const SEGMENTS = [['Обнинск', [1, 2, 3, 5]], ['Варшавка', [4]], ['Технополис', [6, 7, 8, 9, 10]]];
+for (const [name, ids] of SEGMENTS) for (const id of ids) {
+  const hit = nearestOnPolyline(beam, routes.stops[String(id)]);
+  scene.add(floorPill(name, hit.x, hit.z, hit.angle));
 }
 const allIds = data.zones.map((z) => z.id);
 setRoute('all');
@@ -82,7 +116,7 @@ function applyScenario(s) {
   setRoute(s ? s.id : 'all');
   zoneMeshes.forEach((m) => {
     const on = ids.includes(m.userData.id);
-    m.material.emissive.setHex(s && on ? 0x333300 : 0x000000);
+    m.material.emissive.setHex(s && on ? 0x330000 : 0x000000);
     m.material.opacity = 1; m.material.transparent = false;
     if (s && !on) { m.material.transparent = true; m.material.opacity = 0.25; }
   });
@@ -178,7 +212,7 @@ function tourStep(dt) {
   const e = k * k * (3 - 2 * k);
   camera.position.lerpVectors(a.cam, b.cam, e);
   camera.lookAt(new THREE.Vector3().lerpVectors(a.look, b.look, e));
-  $('caption').innerHTML = `${a.title}<br><span style="font-size:16px;color:#cfd3da">${a.sub}</span>`;
+  $('caption').innerHTML = `${a.title}<br><span style="font-size:16px;color:#595959">${a.sub}</span>`;
 }
 window.__tourDone = () => tourDone;
 // Для записи видео: кадр на заданной секунде (Playwright вызывает window.__renderAt(t))
