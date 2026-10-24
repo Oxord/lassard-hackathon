@@ -15,15 +15,20 @@
 
 ## Ссылки
 
-- Решение с исходными материалами до слияния: `https://github.com/Oxord/lassard-hackathon/tree/task/19-submission-package`.
-- После согласования и слияния можно использовать основной адрес репозитория: `https://github.com/Oxord/lassard-hackathon`.
-- Ожидаемая демонстрация модели после включения Pages и развертывания этой версии: `https://oxord.github.io/lassard-hackathon/`.
-- Ожидаемая страница всех материалов после публикации: `https://oxord.github.io/lassard-hackathon/solution/`.
-- Ожидаемая интерактивная презентация: `https://oxord.github.io/lassard-hackathon/solution/presentation.html`.
+Pages включён, репозиторий публичный. Проверено 24.10.2026 запросами без авторизации (HTTP 200); открытие в браузере и работа WebGL проверяются вручную.
 
-**При последней проверке Pages возвращал 404. Не выдавать ожидаемые адреса за рабочие до повторной проверки.** Включение выполняет владелец/maintainer в Settings → Pages → Source: GitHub Actions. После согласования нужной main повторить существующий workflow. Он включает папку output в опубликованный сайт, дополнительно публиковать PDF или видео вручную не требуется.
+- Модель (основная ссылка для ЛК и QR): https://oxord.github.io/lassard-hackathon/
+- Модель, автотур: https://oxord.github.io/lassard-hackathon/?tour=1 и `?tour=1&clean=1`
+- Страница всех материалов: https://oxord.github.io/lassard-hackathon/solution/
+- Интерактивная презентация: https://oxord.github.io/lassard-hackathon/solution/presentation.html
+- Презентация PDF: https://oxord.github.io/lassard-hackathon/solution/pdf/trio-presentation.pdf
+- Записка PDF: https://oxord.github.io/lassard-hackathon/solution/pdf/trio-explanatory-note.pdf
+- Тизер: https://oxord.github.io/lassard-hackathon/solution/teaser.mp4
+- Исходные материалы: https://github.com/Oxord/lassard-hackathon
 
-Техническая проверка корня: `python scripts/check_pages.py`. Затем открыть страницу материалов без входа в GitHub, скачать оба PDF, открыть HTML-презентацию и воспроизвести тизер. В ЛК переносить только проверенные ссылки. Локальные адреса 127.0.0.1 организаторам недоступны.
+Сайт обновляется workflow «Deploy 3D to GitHub Pages» после изменений в `3d/**`, `output/**` и `workflow_dispatch`; после правки только документов запускать вручную (Actions → Run workflow, ветка main). Перед загрузкой в ЛК повторить проверку.
+
+Техническая проверка: `python scripts/check_pages.py` (на macOS Python может падать на сертификатах — тогда проверить адреса через `curl -I`). Затем открыть страницу в приватном окне, скачать оба PDF, открыть HTML-презентацию, воспроизвести тизер. Локальные адреса 127.0.0.1 организаторам недоступны.
 
 ## В личном кабинете
 

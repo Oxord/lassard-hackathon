@@ -1,23 +1,21 @@
 # Итоговый комплект: состояние и порядок подготовки к сдаче
 
-Срез на 24.10.2026, до CP2. **Это инструкция сборки, не подтверждение готовности к сдаче.** PR #4–#9 проверены через GitHub: все открыты. Материалы этих PR еще не включены в `main`; основной проверенный commit — `c879f0b`. Этот документ не заменяет командные карточки задач.
+Срез на 24.10.2026, после CP2. **Это инструкция сборки, не подтверждение готовности к сдаче.** Документ не заменяет командные карточки задач.
 
-## Где лежат результаты ночной работы
+## Статус на 24.10.2026 (после CP2)
 
-Ссылки на файлы ниже ведут в соответствующие ветки: их можно читать до слияния. После новых коммитов содержимое веток может измениться.
+Все PR #4–#13 слиты в `main`. Репозиторий публичный, GitHub Pages включён (источник — Actions), деплой проходит.
 
-| Результат | Где смотреть | Что еще требуется |
-|---|---|---|
-| Источники и габариты оборудования | [PR #4](https://github.com/Oxord/lassard-hackathon/pull/4), [facts.md](https://github.com/Oxord/lassard-hackathon/blob/task/11-source-verification/facts/facts.md), [проверка источников](https://github.com/Oxord/lassard-hackathon/blob/task/11-source-verification/docs/source-review.md) | Выбрать исполнения оборудования и получить установочные схемы; пересчитать зоны |
-| Черновик пояснительной записки | [PR #5](https://github.com/Oxord/lassard-hackathon/pull/5), [текст](https://github.com/Oxord/lassard-hackathon/blob/task/12-explanatory-note/docs/explanatory-note.md), [PDF, 11 страниц](https://github.com/Oxord/lassard-hackathon/blob/task/12-explanatory-note/docs/drafts/lassard-explanatory-note-review.pdf) | Обновить после ответов CP2 и изменения планировки; заново выпустить и просмотреть PDF |
-| Содержание 17 слайдов | [PR #6](https://github.com/Oxord/lassard-hackathon/pull/6), [текст для переноса](https://github.com/Oxord/lassard-hackathon/blob/task/13-presentation-materials/slides/content-17.md) | Согласовать структуру с командной презентацией, перенести текст, заполнить название команды |
-| Восемь актуальных видов 3D | [Описание и изображения в PR #6](https://github.com/Oxord/lassard-hackathon/tree/task/13-presentation-materials/slides/visuals/review-20261024) | После изменения геометрии или оформления заменить нужные кадры |
-| Подготовка к CP2 и проверка 3D | [вопросы и тезисы](https://github.com/Oxord/lassard-hackathon/blob/task/13-presentation-materials/docs/cp2-preparation.md), [отчет](https://github.com/Oxord/lassard-hackathon/blob/task/13-presentation-materials/docs/3d-review.md) | Внести реальные ответы в trackers; отчет отражает проверенную исходную модель |
-| Мобильные кнопки | [PR #7](https://github.com/Oxord/lassard-hackathon/pull/7) | После принятия проверить в общей сборке |
-| Диагностика публикации | [PR #8](https://github.com/Oxord/lassard-hackathon/pull/8), [инструкция](https://github.com/Oxord/lassard-hackathon/blob/task/15-pages-verification/docs/pages-publication.md) | Включение Pages владельцем/maintainer, повторная публикация, проверка ссылки, внесение в ЛК |
-| Читаемость подписей 3D | [PR #9](https://github.com/Oxord/lassard-hackathon/pull/9) | После принятия проверить в общей сборке; плавность переходов камеры этим PR не исправлена |
+| Результат | Где |
+|---|---|
+| 3D-модель | https://oxord.github.io/lassard-hackathon/ |
+| Материалы комплекта | https://oxord.github.io/lassard-hackathon/solution/ ; исходники — `output/`, `submission/` |
+| Презентация (17 слайдов), записка (8 стр.), тизер | `output/pdf/`, `output/teaser.mp4`; источник текста — `submission/content.json`, `submission/explanatory-note.md` |
+| Ответы CP2 | `docs/trackers.md`, `docs/decisions.md`, `facts/facts.md` |
+| Речь CP2 | `docs/cp2-speech.md` (написана до слияния ответов CP2 — перед использованием сверить) |
+| Что загружать и куда | `docs/upload-instructions.md` |
 
-Ветки задач независимы и созданы от `main`. Открытый PR обновляется новыми коммитами в его ветке. Ни один из перечисленных PR не является готовым финальным комплектом сам по себе.
+Пересборка комплекта: `scripts/build_submission.py` (нужны reportlab, pypdf, Arial; путь к шрифтам — `LASSARD_FONT_DIR`). Zip нужно обновлять отдельно.
 
 ## Что уже есть в основной версии
 
@@ -67,19 +65,13 @@ npm run build
 
 Если менялась геометрия, сначала проверить установленный в проекте способ генерации планов (`plan/make_plan.py`) и обновить соответствующие результаты. Успешные тесты показывают выполнение заложенных правил, а не подтверждают соответствие пожарным или лазерным нормам.
 
-## Публичная модель и действие владельца по PR #8
+## Публичная модель
 
-На момент диагностики основной адрес возвращал 404; в Actions `build` проходил, `deploy` падал с просьбой включить Pages. Прав настройки у текущей учетной записи нет.
+Pages включён, сайт отвечает (HTTP 200 на 24.10.2026). Осталось вручную:
 
-- [ ] Владелец/maintainer включает `Settings → Pages → Source: GitHub Actions`.
-- [ ] После подготовки нужной main запускает существующий workflow, проверяет успех `build` и `deploy`.
-- [ ] Проверяет точный URL из результата публикации. Ожидаемый адрес: `https://oxord.github.io/lassard-hackathon/`.
-- [ ] Запускает `python scripts/check_pages.py` после включения скрипта из PR #8 в рабочую версию.
-- [ ] Открывает сайт без авторизации: модель, четыре сценария, карточки, вид сверху, маршрут и автотур.
-- [ ] Проверяет узкое окно и нужные ссылки `?tour=1`, `?tour=1&clean=1`.
-- [ ] Вносит проверенный основной URL в ЛК; использует тот же адрес для QR и слайдов.
-
-Для будущего сообщения Ване: **PR #8 требует действия владельца/maintainer; одной правкой кода и слиянием PR включение Pages не заменяется.** Сообщение в рамках ночной работы не отправлялось.
+- [ ] Открыть https://oxord.github.io/lassard-hackathon/ в приватном окне: модель, четыре сценария, карточки, вид сверху, маршрут, автотур.
+- [ ] Проверить узкое окно и ссылки `?tour=1`, `?tour=1&clean=1`.
+- [ ] Внести основной URL в ЛК; тот же адрес — в QR и слайды.
 
 ## Последний просмотр перед загрузкой
 
