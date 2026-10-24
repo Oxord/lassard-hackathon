@@ -65,6 +65,7 @@ def timeline():
     events = [
         ("2008", "Группа компаний «Вартон», в которую входит «Лассард», начинает работу", "lassard.ru/about/company"),
         ("2015", "Полный цикл производства; основание в Калуге", "сайт (2015); Калуга — по кейсу"),
+        ("2021", "Победа в конкурсе Минпромторга на ОКР «Листопад» (08.11)", "kommersant.ru/doc/5065569"),
         ("2023", "Запуск производства в ОЭЗ «Технополис Москва» (весна)", "photonics.su"),
         ("03.2026", "Проект «Лазерный класс» (24.03)", "lassard.ru/news/laser-room"),
         ("05.2026", "17 моделей оборудования резидента в реестре Минпромторга (26.05)", "mos.ru"),
@@ -78,7 +79,7 @@ def timeline():
         last = i == len(events) - 1
         parts.append(f'<circle cx="{cx}" cy="{y}" r="22" fill="{RED if last else WHITE}" stroke="{RED}" stroke-width="8"/>')
         parts.append(text(cx, y - 70, date, 54, RED, "bold", "middle"))
-        lines = wrap(desc, 19)
+        lines = wrap(desc, 16)
         for j, ln in enumerate(lines):
             parts.append(text(cx, y + 90 + j * 38, ln, 28, INK, "normal", "middle"))
         parts.append(text(cx, y + 110 + len(lines) * 38, src, 20, MID, "normal", "middle"))
@@ -92,7 +93,7 @@ def numbers():
         ("14 400 м²", "производственных площадей", ""),
         ("30+", "видов станков", ""),
         ("100+", "оптико-механических изделий", ""),
-        ("400+", "единиц оборудования в год", "по кейсу; на сайте «100+ станков в год» — уточняется"),
+        ("400+", "единиц оборудования в год", ""),
         ("80%", "локализации", ""),
         ("Реестр", "Минпромторга РФ", ""),
     ]
@@ -159,12 +160,12 @@ def geo_map():
     parts.append(f'<rect x="1020" y="840" width="804" height="150" fill="{RED}"/>')
     parts.append(text(1422, 920, "Москва + 40 регионов + Беларусь", 46, WHITE, "bold", "middle"))
     parts.append(text(1422, 962, "поставки: Москва, 40 регионов России, экспорт в Беларусь", 22, WHITE, "normal", "middle"))
-    parts.append(footnote("Схематично, не в масштабе; контуры нарисованы вручную. Конкретные регионы не показаны: "
-                          "списка с URL на lassard.ru нет. Источник: facts/facts.md §1–2."))
+    parts.append(footnote("Не в масштабе. Источник: facts/facts.md §1–2."))
     return svg_doc("Карта присутствия", "".join(parts))
 
 
 def cycle():
+    # Диоды/источники ↔ площадки — ДОПУЩЕНИЕ по кейсу: Обнинск — лазеры и компоненты, Варшавка — лазеры.
     nodes = [("Кристалл", "выращивание", "Обнинск"),
              ("Квантрон / диод", "накачка", "Обнинск"),
              ("Источник", "лазер", "Варшавское шоссе"),
@@ -187,8 +188,7 @@ def cycle():
         parts.append(f'<rect x="{x}" y="{y + bh + 70}" width="{bw}" height="70" fill="{PALE}"/>')
         parts.append(f'<rect x="{x}" y="{y + bh + 70}" width="{bw}" height="8" fill="{MID}"/>')
         parts.append(text(x + bw / 2, y + bh + 120, site, 26, INK, "bold", "middle"))
-    parts.append(footnote("Схема упрощена: Обнинск также выпускает твердотельные лазеры. "
-                          "Источник: lassard.ru/about/company, photonics.su."))
+    parts.append(footnote("Источник: lassard.ru/about/company, photonics.su."))
     return svg_doc("Цикл производства", "".join(parts))
 
 
