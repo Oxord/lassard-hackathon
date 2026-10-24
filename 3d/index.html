@@ -5,17 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Лассард: шоурум, 3D</title>
 <style>
-  html,body{margin:0;height:100%;background:#14161a;font-family:system-ui,sans-serif;color:#fff;overflow:hidden}
+  html,body{margin:0;height:100%;background:#f4f4f4;font-family:system-ui,sans-serif;color:#262626;overflow:hidden}
   #app{position:fixed;inset:0}
   #controls{position:fixed;top:12px;left:12px;right:352px;display:flex;flex-direction:column;gap:8px;max-height:45vh;overflow:auto;z-index:2}
   .bar{display:flex;gap:8px;flex-wrap:wrap}
-  button{background:#c8102e;color:#fff;border:0;border-radius:6px;padding:8px 12px;font-size:14px;cursor:pointer}
-  button.alt{background:#3a3f47} button.on{background:#ffd400;color:#14161a}
-  #card{position:fixed;right:12px;top:12px;width:300px;max-width:calc(100% - 24px);background:#fff;color:#14161a;border-radius:10px;padding:14px;display:none;z-index:2}
+  button{background:#dd191c;color:#fff;border:0;border-radius:6px;padding:8px 12px;font-size:14px;cursor:pointer}
+  button.alt{background:#7f7f7f} button.on{background:#262626;color:#fff}
+  #card{position:fixed;right:12px;top:12px;width:300px;max-width:calc(100% - 24px);background:#fff;color:#262626;border:1px solid #bbb;border-radius:10px;padding:14px;display:none;z-index:2}
   #card h3{margin:0 0 6px} #card small{color:#666}
-  #caption{position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:rgba(20,22,26,.82);padding:14px 22px;border-radius:10px;font-size:22px;display:none;z-index:2;max-width:80%;text-align:center}
-  #caption b{color:#ffd400}
-  #hint{position:fixed;left:12px;bottom:12px;font-size:12px;color:#9aa0aa;z-index:2}
+  #caption{position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:rgba(255,255,255,.92);border:1px solid #bbb;padding:14px 22px;border-radius:10px;font-size:22px;display:none;z-index:2;max-width:80%;text-align:center}
+  #caption b{color:#dd191c}
+  #legend{position:fixed;right:12px;bottom:12px;background:rgba(255,255,255,.92);border:1px solid #bbb;border-radius:8px;padding:8px 12px;font-size:12px;z-index:2}
+  #legend i{display:inline-block;width:26px;height:0;vertical-align:middle;margin-right:6px}
+  #hint{position:fixed;left:12px;bottom:12px;font-size:12px;color:#595959;z-index:2}
   @media(max-width:760px){
     #controls{right:12px}
     #card{top:50%;bottom:auto;max-height:calc(50vh - 68px);overflow:auto;box-sizing:border-box;width:328px}
@@ -38,6 +40,7 @@
 </div>
 <div id="card"></div>
 <div id="caption"></div>
+<div id="legend"><div><i style="border-top:5px solid #dd191c"></i>Луч ЛАССАРД: основной маршрут</div><div><i style="border-top:2px dashed #7f7f7f"></i>Маршрут выбранной роли</div></div>
 <div id="hint">Клик по зоне: карточка. Прогулка: WASD или стрелки, мышь с зажатой кнопкой: поворот.</div>
 <script type="module" src="/src/main.js"></script>
 </body>

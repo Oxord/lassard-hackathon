@@ -7,16 +7,22 @@ export function createLabels() {
   const viewPoint = new THREE.Vector3();
   const projected = new THREE.Vector3();
 
-  function create(text, size, color = '#fff', aspect = 1) {
+  function create(text, size, color = '#262626', aspect = 1) {
     const canvas = document.createElement('canvas');
     canvas.width = 128 * aspect;
     canvas.height = 128;
     const context = canvas.getContext('2d');
     if (aspect === 1) {
-      context.fillStyle = '#14161a';
+      context.fillStyle = '#ffffff';
       context.beginPath();
-      context.arc(64, 64, 60, 0, Math.PI * 2);
+      context.arc(64, 64, 58, 0, Math.PI * 2);
       context.fill();
+      context.lineWidth = 7;
+      context.strokeStyle = '#dd191c';
+      context.stroke();
+    } else {
+      context.fillStyle = 'rgba(255,255,255,0.88)';
+      context.fillRect(0, 22, canvas.width, 92);
     }
     context.fillStyle = color;
     context.font = `bold ${aspect === 1 ? 64 : 40}px sans-serif`;
