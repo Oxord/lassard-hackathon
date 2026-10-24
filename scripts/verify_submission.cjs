@@ -6,6 +6,18 @@ const { chromium } = require(process.env.LASSARD_PLAYWRIGHT || 'playwright');
 const root = path.resolve(__dirname, '..');
 const out = path.join(root, 'output');
 const qa = path.join(root, 'tmp/submission-build/qa');
+const content = require(path.join(root, 'submission/content.json'));
+const slideCount = content.slides.length;
+// Wording the deck must not use; keep in sync with the review rules for task/32.
+const FORBIDDEN = ['не утверждаем', 'не заменяет', 'стоимость не оценена', 'требует согласования', 'требуют согласования', '100+ станков', 'совместная разработка с TECHNORED', 'маркирует образец гостя'];
+const MAX_BACKGROUND_DARKNESS = 0.2;   // slide background luminance must stay near white
+
+function textProblems(label, text) {
+  const lower = text.toLowerCase();
+  const problems = FORBIDDEN.filter(phrase => lower.includes(phrase.toLowerCase())).map(phrase => `${label}: «${phrase}»`);
+  if (/[\[\]]/.test(text)) problems.push(`${label}: square brackets`);
+  return problems;
+}
 
 (async () => {
   await fs.mkdir(qa, { recursive: true });
@@ -40,16 +52,25 @@ const qa = path.join(root, 'tmp/submission-build/qa');
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     const base = 'http://127.0.0.1:' + server.address().port;
     await page.goto(base + '/solution/presentation.html', { waitUntil: 'networkidle' });
-    assert.equal(await page.locator('.slide').count(), 17);
+    assert.equal(await page.locator('.slide').count(), slideCount);
     const imagesOk = await page.locator('img').evaluateAll(images => images.every(i => i.complete && i.naturalWidth));
     assert(imagesOk);
     await page.addStyleTag({ content: 'nav{display:none!important}' });
     const overflow = [];
-    for (let i = 0; i < 17; i++) {
+    const problems = [];
+    for (let i = 0; i < slideCount; i++) {
       const slide = page.locator('.slide').nth(i);
+      const facts = await slide.evaluate(el => {
+        const rgb = getComputedStyle(el).backgroundColor.match(/\d+(\.\d+)?/g).map(Number);
+        const tag = el.querySelector('.tag');
+        return { luminance: (0.2126*rgb[0] + 0.7152*rgb[1] + 0.0722*rgb[2]) / 255, tag: tag ? tag.textContent.trim() : '', text: el.innerText };
+      });
+      if (1 - facts.luminance > MAX_BACKGROUND_DARKNESS) problems.push(`slide ${i+1}: dark background`);
+      if (!facts.tag) problems.push(`slide ${i+1}: missing .tag`);
+      problems.push(...textProblems(`slide ${i+1}`, facts.text));
       const bad = await slide.evaluate(el => {
         const rect = el.getBoundingClientRect(); const footer = el.querySelector('footer').getBoundingClientRect();
-        return [...el.querySelectorAll('h1,.lead,.copy,table')].filter(child => {
+        return [...el.querySelectorAll('h1,.lead,.copy,table,.tag,.steps,.body>img,.pics img')].filter(child => {
           const r = child.getBoundingClientRect();
           return r.right > rect.right-20 || r.left < rect.left || r.bottom > footer.top-8;
         }).map(el => el.tagName + ':' + el.className);
@@ -61,8 +82,12 @@ const qa = path.join(root, 'tmp/submission-build/qa');
     await page.keyboard.press('ArrowRight'); await page.waitForTimeout(400);
     assert(await page.evaluate(() => window.scrollY > 500), 'slide keyboard navigation');
     await page.goto(base + '/qa/teaser-frames.html', { waitUntil: 'networkidle' });
-    for(let i=0;i<6;i++)await page.locator('section').nth(i).screenshot({path:path.join(qa,`teaser-${i}.png`)});
+    assert.equal(await page.locator('section').count(), content.teaser.length);
+    problems.push(...textProblems('teaser frames', await page.locator('body').innerText()));
+    for(let i=0;i<content.teaser.length;i++)await page.locator('section').nth(i).screenshot({path:path.join(qa,`teaser-${i}.png`)});
+    problems.push(...textProblems('teaser.txt', await fs.readFile(path.join(out,'teaser.txt'),'utf8')));
     await page.goto(base + '/solution/', { waitUntil: 'networkidle' });
+    problems.push(...textProblems('index.html', await page.locator('body').innerText()));
     if (await fs.stat(path.join(out,'teaser.mp4')).then(()=>true,()=>false)) {
       await page.waitForFunction(()=>document.querySelector('video').readyState>=1);
       assert.equal(await page.locator('video').evaluate(v=>Math.round(v.duration)),30);
@@ -76,9 +101,10 @@ const qa = path.join(root, 'tmp/submission-build/qa');
     assert(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'material page narrow layout');
     await page.screenshot({ path: path.join(qa, 'material-index.png'), fullPage: true });
     assert.deepEqual(errors, []);
-    await fs.writeFile(path.join(qa,'html-checks.json'), JSON.stringify({ slides:17, imagesOk, overflow, keyboard:true, pageErrors:errors },null,2));
-    console.log(JSON.stringify({slides:17,imagesOk,overflow,keyboard:true,pageErrors:errors}));
-    if(overflow.length)process.exitCode=1;
+    const report = { slides: slideCount, imagesOk, overflow, problems, keyboard: true, pageErrors: errors };
+    await fs.writeFile(path.join(qa,'html-checks.json'), JSON.stringify(report,null,2));
+    console.log(JSON.stringify(report));
+    if(overflow.length||problems.length)process.exitCode=1;
   } finally {
     if(browser)await browser.close();await new Promise(r=>server.close(r));
   }
