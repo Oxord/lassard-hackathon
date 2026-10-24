@@ -159,12 +159,14 @@ def draw_beam(ax, pts):
             solid_capstyle='round', alpha=0.9, zorder=6)
 
 
-def draw_legend(ax, role=False):
+def draw_legend(ax, plan, role=False):
     items = [ax.plot([], [], color=RED, lw=BEAM_LW / 1.5, label='Луч ЛАССАРД — основной маршрут')[0]]
     if role:
         items.append(ax.plot([], [], color=ROLE_GRAY, lw=1.2, ls='--', label='Маршрут роли (тонкий пунктир)')[0])
     items.append(ax.plot([], [], color=GLASS, lw=5, label='Стекло в цех (юг)')[0])
-    ax.legend(handles=items, loc='lower right', bbox_to_anchor=(1.0, 0.1), fontsize=8.5, frameon=True, facecolor='white', edgecolor=GRAY)
+    room = plan.room   # под линией стекла, правее подписи «Стекло в цех»
+    ax.legend(handles=items, loc='upper right', bbox_to_anchor=(room['w'] + 3.2, room['d'] + 0.7), bbox_transform=ax.transData,
+              fontsize=8.5, frameon=True, facecolor='white', edgecolor=GRAY)
 
 
 def footer(ax, plan, lines):
@@ -230,7 +232,7 @@ def plan_zones(plan, report):
     f = plan.finale()
     ax.plot(*f, marker='*', ms=16, color=GLASS, mec=DARK, zorder=9)
     ax.text(f[0], f[1] + 0.9, 'Финал:\nвид на цех', ha='center', va='top', fontsize=7, color=GLASS, fontweight='bold', zorder=9)
-    draw_legend(ax)
+    draw_legend(ax, plan)
     draw_passport(ax, plan)
     widths = [s['min_width'] for r in report['routes'].values() for s in r['segments'] if not str(s['from']).startswith('проём') and not str(s['to']).startswith('проём')]
     footer(ax, plan, passport_legend(plan) + [
@@ -298,7 +300,7 @@ def plan_flows(plan, report):
                 label='%s: %s' % (s['name'], ' → '.join(str(i) for i in s['zones'] if plan.zones[i]['model'] != 'meeting') + ' → ' + ends))
     draw_passport(ax, plan)
     footer(ax, plan, passport_legend(plan))
-    draw_legend(ax, role=True)
+    draw_legend(ax, plan, role=True)
     fig.savefig(os.path.join(OUT, 'plan-flows.png'), bbox_inches='tight')
     plt.close(fig)
 
