@@ -7,10 +7,6 @@
   "pages_url": "https://oxord.github.io/lassard-hackathon/",
   "logos": [
     {
-      "file": "logos/mosprom.png",
-      "label": "логотип Моспром"
-    },
-    {
       "file": "logos/lassard.png",
       "label": "логотип ЛАССАРД"
     }
