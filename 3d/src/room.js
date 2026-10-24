@@ -84,7 +84,7 @@ export function buildRoom(scene, room, label) {
   if (segs.length) {
     const [t0, t1] = segs.reduce((a, b) => (b[1] - b[0] > a[1] - a[0] ? b : a));
     const [x, z] = wallPoint(room, room.production_side, (t0 + t1) / 2, 0.4);
-    const lbl = label(`Цех (${SIDE_RU[room.production_side]}) за стеклом`, 1.0, '#88ccff', 8);
+    const lbl = label(`Цех снизу схемы · CP2`, 1.0, '#88ccff', 8);
     lbl.position.set(x, RH - 0.6, z);
     scene.add(lbl);
   }
@@ -94,7 +94,7 @@ export function buildRoom(scene, room, label) {
   for (const o of room.openings) {
     scene.add(wallSlab(room, o.wall, o.from, o.to, 0.08, 0.6, exitMat));
     const [x, z] = wallPoint(room, o.wall, (o.from + o.to) / 2, 0.3);
-    const lbl = label(`Проём ${o.id}${o.role === 'entrance' ? ': вход' : ': выход'}`, 0.7, '#5fd17a', 4);
+    const lbl = label(`Предлагаемый ${o.role === 'entrance' ? 'вход' : 'выход'}`, 0.7, '#5fd17a', 4);
     lbl.position.set(x, 3.0, z);
     scene.add(lbl);
   }
