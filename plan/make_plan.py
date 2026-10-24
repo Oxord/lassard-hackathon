@@ -96,14 +96,23 @@ def draw_columns(ax, plan):
 def draw_partition_and_office(ax, plan):
     room = plan.room
     side = room.get('production_side')
+    glass_end = room['columns']['xs'][1]   # смотровое стекло — оси A–B (0–12 м южной стены)
     for t0, t1 in layout.partition_segments(room):
-        a, b = layout.wall_point(side, t0, room, 0.15), layout.wall_point(side, t1, room, 0.15)
+        if t0 >= glass_end:
+            continue
+        a, b = layout.wall_point(side, t0, room, 0.15), layout.wall_point(side, min(t1, glass_end), room, 0.15)
         ax.plot([a[0], b[0]], [a[1], b[1]], color=GLASS, lw=5, zorder=5, solid_capstyle='butt')
     if side in layout.SIDES and side not in layout.EXTERNAL_WALLS:
         x, y = outside_label_pos(side, room)
-        rot = 90 if side in ('east', 'west') else 0
-        ax.text(x, y, 'Стекло в цех\n80% локализации · реестр Минпромторга' if side == 'south' else 'ЦЕХ · сторона уточняется',
-                ha='center', va='center', rotation=rot, fontsize=8, color=GLASS, fontweight='bold')
+        if side == 'south':
+            a, b = layout.wall_point(side, glass_end, room, 0.15), layout.wall_point(side, room['w'], room, 0.15)
+            ax.plot([a[0], b[0]], [a[1], b[1]], color='#555', lw=2.2, zorder=4, solid_capstyle='butt')
+            ax.text(glass_end / 2, y, 'Смотровое стекло 12×3 м\n80% локализации · реестр Минпромторга',
+                    ha='center', va='center', fontsize=8, color=GLASS, fontweight='bold')
+            ax.text((glass_end + room['w']) / 2, y, 'глухая часть', ha='center', va='center', fontsize=8, color='#555')
+        else:
+            rot = 90 if side in ('east', 'west') else 0
+            ax.text(x, y, 'ЦЕХ · сторона уточняется', ha='center', va='center', rotation=rot, fontsize=8, color=GLASS, fontweight='bold')
     office = room.get('office_side')
     if office in layout.SIDES:
         x, y = outside_label_pos(office, room, 2.0 if office == 'south' else 2.4)
@@ -163,8 +172,8 @@ def draw_legend(ax, plan, role=False):
     items = [ax.plot([], [], color=RED, lw=BEAM_LW / 1.5, label='Луч ЛАССАРД — основной маршрут')[0]]
     if role:
         items.append(ax.plot([], [], color=ROLE_GRAY, lw=1.2, ls='--', label='Маршрут роли (тонкий пунктир)')[0])
-    items.append(ax.plot([], [], color=GLASS, lw=5, label='Стекло в цех (юг)')[0])
-    room = plan.room   # под линией стекла, правее подписи «Стекло в цех»
+    items.append(ax.plot([], [], color=GLASS, lw=5, label='Смотровое стекло (юг, оси A–B)')[0])
+    room = plan.room   # под линией стены, правее подписи стекла
     ax.legend(handles=items, loc='upper right', bbox_to_anchor=(room['w'] + 3.2, room['d'] + 0.7), bbox_transform=ax.transData,
               fontsize=8.5, frameon=True, facecolor='white', edgecolor=GRAY)
 
