@@ -236,7 +236,7 @@ def plan_zones(plan, report):
     draw_passport(ax, plan)
     widths = [s['min_width'] for r in report['routes'].values() for s in r['segments'] if not str(s['from']).startswith('проём') and not str(s['to']).startswith('проём')]
     footer(ax, plan, passport_legend(plan) + [
-        'Красный: рабочая зона · Белый: декоративная · Серый: техника · жирная рамка: закрытое помещение · '
+        'Красный: рабочие зоны 6, 7, 8, 12 · Белый: чистая зона · Серый: техника · жирная рамка: закрытое помещение · '
         'красная полоса: «Луч» с сопровождением; у смотровой точки допускается возврат. Одновременно одна группа.',
         'Подписи — свободная ширина в модели: минимум %s м (проектный порог ≥%s м, группа до %d чел.). Это не нормативный расчет.'
         % (('%.1f' % min(widths)).replace('.', ','), ('%g' % plan.p['aisle_min']).replace('.', ','), plan.p['group_max']),
