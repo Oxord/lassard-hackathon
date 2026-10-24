@@ -9,6 +9,10 @@
     {
       "file": "logos/lassard.png",
       "label": "логотип ЛАССАРД"
+    },
+    {
+      "file": "logos/mosprom.png",
+      "label": "логотип Открой Моспром"
     }
   ],
   "slides": [

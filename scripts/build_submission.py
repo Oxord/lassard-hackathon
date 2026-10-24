@@ -215,8 +215,8 @@ def draw_content(c, s, i):
             image_fit(c, name, MARGIN+k*452, top-243, 432, 243)
         draw_paragraphs(c, body, MARGIN, top-258, 884, 15, i)
     elif layout == 'table':
-        bottom = draw_table(c, s['table'], MARGIN, top, [380, 504], 15.5, i)
-        draw_paragraphs(c, body, MARGIN, bottom-20, 884, 15.5, i)
+        bottom = draw_table(c, s['table'], MARGIN, top, [380, 504], 14, i)
+        draw_paragraphs(c, body, MARGIN, bottom-20, 884, 14, i)
     elif layout == 'budget':
         bottom = draw_table(c, s['table'], MARGIN, top, [450, 66], 11.5, i, total_row=True, right_col=True)
         draw_paragraphs(c, [s['note']], MARGIN, bottom-10, 516, 11.5, i, rule=False)
