@@ -10,13 +10,12 @@ const content = require(path.join(root, 'submission/content.json'));
 const slideCount = content.slides.length;
 // Wording the deck must not use; keep in sync with the review rules for task/32.
 const FORBIDDEN = ['не утверждаем', 'не заменяет', 'стоимость не оценена', 'требует согласования', 'требуют согласования', '100+ станков', 'совместная разработка с TECHNORED', 'маркирует образец гостя'];
-const ALLOWED_BRACKETS = '[СМЕТА]';
 const MAX_BACKGROUND_DARKNESS = 0.2;   // slide background luminance must stay near white
 
 function textProblems(label, text) {
   const lower = text.toLowerCase();
   const problems = FORBIDDEN.filter(phrase => lower.includes(phrase.toLowerCase())).map(phrase => `${label}: «${phrase}»`);
-  if (/[\[\]]/.test(text.split(ALLOWED_BRACKETS).join(''))) problems.push(`${label}: brackets other than ${ALLOWED_BRACKETS}`);
+  if (/[\[\]]/.test(text)) problems.push(`${label}: square brackets`);
   return problems;
 }
 

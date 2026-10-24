@@ -72,8 +72,8 @@ CSS = '''
 .duo .pics{display:flex;gap:26px}.duo .pics img{width:575px;height:323px;object-fit:contain;background:var(--pale)}.duo .copy{margin-top:16px}
 .slide table{border-collapse:collapse;width:100%;font-size:19px}.slide td,.slide th{padding:10px 14px;border-bottom:1px solid var(--light);text-align:left;vertical-align:top;line-height:1.22}.slide th{background:var(--light);color:var(--ink);font-size:17px;text-transform:uppercase;letter-spacing:.5px}
 .table .copy{margin-top:18px}.table .copy p{font-size:20px}.table .body{display:block}
-.table-steps table{width:640px}.table-steps td,.table-steps th{padding:7px 12px;font-size:17px}.table-steps tr:last-child td{font-weight:700;color:var(--red);border-bottom:0}
-.steps{flex:1}.steps h2{font-size:19px;margin:0 0 14px;text-transform:uppercase;letter-spacing:.5px}.steps ol{list-style:none;margin:0;padding:0;counter-reset:s}.steps li{counter-increment:s;font-size:20px;line-height:1.25;margin:0 0 18px;padding-left:52px;position:relative}.steps li::before{content:counter(s);position:absolute;left:0;top:-4px;width:36px;height:36px;border-radius:50%;background:var(--red);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
+.budget .copy{flex:none;width:700px}.budget td,.budget th{padding:5px 10px;font-size:15px}.budget td:last-child,.budget th:last-child{width:70px;text-align:right}.budget tr:last-child td{font-weight:700;color:var(--red);border-bottom:0}.budget .copy p.note{margin-top:10px;font-size:15px;color:var(--ink)}
+.steps{flex:1}.steps h2{font-size:19px;margin:0 0 14px;text-transform:uppercase;letter-spacing:.5px}.steps ol{list-style:none;margin:0;padding:0;counter-reset:s}.steps li{counter-increment:s;font-size:17px;line-height:1.28;margin:0 0 16px;padding-left:52px;position:relative}.steps li b{display:block;color:var(--red);font-size:17px;margin-bottom:2px}.steps li::before{content:counter(s);position:absolute;left:0;top:-4px;width:36px;height:36px;border-radius:50%;background:var(--red);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
 .slide footer{position:absolute;left:52px;right:52px;bottom:14px;font-size:13px;line-height:1.3;color:var(--mid);display:flex;gap:24px;align-items:flex-end;border-top:1px solid var(--light);padding-top:8px}.slide footer span:first-child{flex:1}.page{white-space:nowrap}
 .cover h1,.final h1{font-size:84px;margin-top:40px}.cover .lead,.final .lead{font-size:32px;max-width:600px}.cover .copy p,.final .copy p{font-size:20px;border:0;padding:0;max-width:560px}
 .cover .body>img{position:absolute;right:52px;top:120px;width:560px;height:315px;object-fit:cover}
@@ -95,9 +95,9 @@ def slide_body_html(s):
         return f'<div class="pics">{pics}</div><div class="copy">{paras}</div>'
     if layout == 'table':
         return f'<div class="body"><div class="copy">{table_html(s["table"])}</div><div class="copy">{paras}</div></div>'
-    if layout == 'table-steps':
-        steps = ''.join(f'<li>{esc(p)}</li>' for p in s['body'])
-        return f'<div class="body"><div class="copy">{table_html(s["table"])}</div><div class="steps"><h2>Дорожная карта MVP</h2><ol>{steps}</ol></div></div>'
+    if layout == 'budget':
+        steps = ''.join(f'<li><b>{esc(q["queue"])}</b>{esc(q["text"])}</li>' for q in s['roadmap'])
+        return f'<div class="body"><div class="copy">{table_html(s["table"])}<p class="note">{esc(s["note"])}</p></div><div class="steps"><h2>{esc(s["roadmap_title"])}</h2><ol>{steps}</ol></div></div>'
     if layout == 'image-table':
         return f'<div class="body">{picture}<div class="copy">{table_html(s["table"])}</div></div>'
     beam = '<div class="beam"></div>' if layout in ('cover', 'final') else ''
@@ -135,18 +135,20 @@ def image_fit(c, name, x, y, w, h):
     return y+(h-dh)/2
 
 
-def pdf_table(rows, widths, size=14, total_row=False):
+def pdf_table(rows, widths, size=14, total_row=False, right_col=False):
     formatted = [[Paragraph(esc(cell), pstyle('cell', size, INK, bold=i == 0 or (total_row and i == len(rows)-1))) for cell in row] for i, row in enumerate(rows)]
     t = Table(formatted, colWidths=widths, hAlign='LEFT')
     style = [('BACKGROUND',(0,0),(-1,0),colors.HexColor(LIGHT)),('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6),('LINEBELOW',(0,1),(-1,-1),.6,colors.HexColor(LIGHT))]
+    if right_col:
+        style.append(('ALIGN',(-1,0),(-1,-1),'RIGHT'))
     if total_row:
         style.append(('TEXTCOLOR',(0,-1),(-1,-1),colors.HexColor(BRAND_RED)))
     t.setStyle(TableStyle(style))
     return t
 
 
-def draw_table(c, rows, x, top, widths, size, slide_no, total_row=False):
-    table = pdf_table(rows, widths, size, total_row)
+def draw_table(c, rows, x, top, widths, size, slide_no, total_row=False, right_col=False):
+    table = pdf_table(rows, widths, size, total_row, right_col)
     _, h = table.wrap(sum(widths), 500)
     table.drawOn(c, x, top-h)
     if top-h < CONTENT_FLOOR: raise ValueError(f'Table overflow on slide {slide_no}')
@@ -215,15 +217,17 @@ def draw_content(c, s, i):
     elif layout == 'table':
         bottom = draw_table(c, s['table'], MARGIN, top, [380, 504], 15.5, i)
         draw_paragraphs(c, body, MARGIN, bottom-20, 884, 15.5, i)
-    elif layout == 'table-steps':
-        draw_table(c, s['table'], MARGIN, top, [340, 140], 13.5, i, total_row=True)
-        para_draw(c, 'ДОРОЖНАЯ КАРТА MVP', 560, top, 362, 13.5, INK, True)
-        cursor = top-34
-        for k, step in enumerate(body, 1):
-            c.setFillColor(colors.HexColor(BRAND_RED)); c.circle(573, cursor-7, 13, fill=1, stroke=0)
-            c.setFillColor(colors.white); c.setFont('ArialBold', 13); c.drawCentredString(573, cursor-11.5, str(k))
-            cursor = para_draw(c, step, 596, cursor, 326, 15, INK)-22
-        if cursor < CONTENT_FLOOR: raise ValueError(f'Steps overflow on slide {i}')
+    elif layout == 'budget':
+        bottom = draw_table(c, s['table'], MARGIN, top, [450, 66], 11.5, i, total_row=True, right_col=True)
+        draw_paragraphs(c, [s['note']], MARGIN, bottom-10, 516, 11.5, i, rule=False)
+        para_draw(c, s['roadmap_title'].upper(), 596, top, 326, 12.5, INK, True)
+        cursor = top-30
+        for k, q in enumerate(s['roadmap'], 1):
+            c.setFillColor(colors.HexColor(BRAND_RED)); c.circle(609, cursor-8, 13, fill=1, stroke=0)
+            c.setFillColor(colors.white); c.setFont('ArialBold', 13); c.drawCentredString(609, cursor-12.5, str(k))
+            cursor = para_draw(c, q['queue'], 634, cursor, 288, 12.5, BRAND_RED, True)-3
+            cursor = para_draw(c, q['text'], 634, cursor, 288, 12, INK)-18
+        if cursor < CONTENT_FLOOR: raise ValueError(f'Roadmap overflow on slide {i}')
     else:
         raise ValueError(f'Unknown layout {layout} on slide {i}')
 
@@ -254,6 +258,16 @@ def build_note_pdf():
         story.append(Paragraph('ТРИО / ПУТЬ СТАНКА',pstyle('brand',11,RED,bold=True)))
         story.append(Spacer(1,14));story.append(Paragraph(esc(heading),title));story.append(Spacer(1,20))
         for p in rest.strip().split('\n\n'):
+            if p.startswith('###'):
+                story.append(Paragraph(esc(p.lstrip('# ').strip()),pstyle('sub',14,DARK,19,True)));story.append(Spacer(1,8));continue
+            if p.startswith('|'):
+                rows=[[c.strip() for c in line.strip().strip('|').split('|')] for line in p.split('\n') if not set(line)<=set('|-: ')]
+                small=pstyle('cell',8.5,DARK,11)
+                data=[[Paragraph(esc(c),pstyle('cellh',8.5,DARK,11,True) if r==0 else small) for c in row] for r,row in enumerate(rows)]
+                t=Table(data,colWidths=[100,45,60,298.28],repeatRows=1)
+                t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#E7E6E6')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.5,colors.HexColor('#cbd0d4')),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+                story.append(t);story.append(Spacer(1,11));continue
+
             # HTML line breaks help long source URLs stay within the page.
             safe=esc(p.replace('\n',' '))
             story.append(Paragraph(safe,text));story.append(Spacer(1,11))
