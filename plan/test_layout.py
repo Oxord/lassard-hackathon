@@ -61,7 +61,7 @@ class PartitionTests(unittest.TestCase):
     def test_glass_skips_wall_columns(self):
         segs = layout.partition_segments(DATA['room'])
         h = DATA['room']['columns']['size'] / 2
-        for y in DATA['room']['columns']['ys']:
+        for y in layout.wall_columns(DATA['room']['production_side'], DATA['room']):
             self.assertFalse(any(a < y + h and y - h < b for a, b in segs))
 
     def test_no_glass_on_external_wall(self):
@@ -108,7 +108,7 @@ class PlanChecksTests(unittest.TestCase):
         self.assertTrue(any('проёмом 2' in v or 'пересекаются' in v for v in layout.check_all(mutated(move))[0]))
 
     def test_zone_smaller_than_equipment_is_rejected(self):
-        d = mutated(lambda d: zone(d, 9).update(d=3.0, z=1.8 - 8.7))
+        d = mutated(lambda d: zone(d, 9).update(d=2.6))
         self.assertTrue(any('зона 9' in v and 'габарит' in v for v in layout.check_all(d)[0]))
 
     def test_client_route_visits_optomechanics_between_sources_and_cutting(self):
@@ -117,7 +117,7 @@ class PlanChecksTests(unittest.TestCase):
 
     def test_passport_stations_follow_ring(self):
         st = DATA['passport_stations']['stations']
-        self.assertEqual([s['zone'] for s in st], [14, 6, 7, 12, 'finale'])
+        self.assertEqual([s['zone'] for s in st], [14, 6, 7, 10, 'finale'])
         self.assertEqual(layout.check_passport(layout.Plan(DATA)), [])
 
     def test_passport_station_against_ring_is_rejected(self):
@@ -126,7 +126,23 @@ class PlanChecksTests(unittest.TestCase):
 
     def test_production_side_west_breaks_one_way_route(self):
         d = mutated(lambda d: d['room'].update(production_side='west'))
+        d['room']['params']['one_way'] = True
         self.assertTrue(any('встречный поток' in v for v in layout.check_all(d)[0]))
+
+    def test_escorted_route_keeps_return_segments_as_warnings(self):
+        violations, report, _ = layout.check_all(DATA)
+        self.assertTrue(report['circulation_warnings'])
+        self.assertFalse(any('встречный поток' in v for v in violations))
+        d = copy.deepcopy(DATA)
+        d['room']['params']['one_way'] = True
+        self.assertTrue(any('встречный поток' in v for v in layout.check_all(d)[0]))
+
+    def test_selected_viewpoint_is_on_production_side(self):
+        plan = layout.Plan(DATA)
+        self.assertEqual(plan.finale_raw(), layout.wall_point('south', 6.7, DATA['room'], 4.25))
+
+    def test_office_side_is_optional_for_open_negotiation_area(self):
+        self.assertNotIn('office_side=None', '\n'.join(layout.check_room(layout.Plan(DATA))))
 
     def test_production_side_change_moves_finale(self):
         d = mutated(lambda d: d['room'].update(production_side='west'))
