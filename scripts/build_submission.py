@@ -246,41 +246,72 @@ def build_presentation_pdf(logos):
     c.save()
 
 
+NOTE_TITLE = DATA['title']
+NOTE_CONTENT_WIDTH = 503.28
+NOTE_IMAGE_MAX_HEIGHT = 250
+# Section index -> (image, number of paragraphs/tables after which it is placed; None = at the end).
+NOTE_IMAGES = {0: ('overview.png', 2), 1: ('slide-plan-zones.png', 1), 2: ('slide-plan-flows.png', 1), 5: ('slide-plan-safety.png', 1)}
+# Column widths by table header; other tables share the width equally.
+NOTE_TABLE_WIDTHS = {
+    ('Строка', 'Цель, млн', 'Диапазон', 'Основа'): [100, 45, 60, 298.28],
+    ('Зона', 'Что в зоне', 'Что показывает гостю'): [100, 230, 173.28],
+    ('Аудитория', 'Маршрут по зонам', 'Акцент и итог визита'): [95, 170, 238.28],
+    ('Факт кейса', 'Где в зале'): [215, 288.28],
+    ('Проблема кейса', 'Решение', 'Где в шоуруме'): [170, 215, 118.28],
+    ('Аналог', 'Что берём', 'Чем «Луч ЛАССАРД» лучше'): [110, 190, 203.28],
+    ('Допущение', 'Основание', 'Кто подтверждает'): [185, 190, 128.28],
+}
+
+
+def note_table(block):
+    rows=[[c.strip() for c in line.strip().strip('|').split('|')] for line in block.split('\n') if not set(line)<=set('|-: ')]
+    small=pstyle('cell',8.5,DARK,11);head=pstyle('cellh',8.5,DARK,11,True)
+    data=[[Paragraph(esc(c),head if r==0 else small) for c in row] for r,row in enumerate(rows)]
+    widths=NOTE_TABLE_WIDTHS.get(tuple(rows[0]),[NOTE_CONTENT_WIDTH/len(rows[0])]*len(rows[0]))
+    t=Table(data,colWidths=widths,repeatRows=1)
+    t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#E7E6E6')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.5,colors.HexColor('#cbd0d4')),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+    return t
+
+
+def note_image(name):
+    from PIL import Image as PillowImage
+    w,h=PillowImage.open(ASSETS/name).size
+    width=min(470,NOTE_IMAGE_MAX_HEIGHT*w/h)
+    return Image(str(ASSETS/name),width=width,height=width*h/w)
+
+
 def build_note_pdf():
     body=(ROOT/'submission/explanatory-note.md').read_text(encoding='utf-8')
-    sections=re.split(r'^## ',body,flags=re.M)[1:]
+    preamble,*sections=re.split(r'^## ',body,flags=re.M)
     story=[]
     title=pstyle('heading',21,DARK,27,True)
     text=pstyle('body',11,DARK,16)
+    brand=f'ТРИО / {NOTE_TITLE.upper()}'
     for i,section in enumerate(sections):
         heading,_,rest=section.partition('\n')
         if i:story.append(PageBreak())
-        story.append(Paragraph('ТРИО / ПУТЬ СТАНКА',pstyle('brand',11,RED,bold=True)))
-        story.append(Spacer(1,14));story.append(Paragraph(esc(heading),title));story.append(Spacer(1,20))
-        for p in rest.strip().split('\n\n'):
+        story.append(Paragraph(brand,pstyle('brand',11,RED,bold=True)))
+        story.append(Spacer(1,14))
+        if not i:
+            doc_title,_,subtitle=preamble.partition('\n')
+            story.append(Paragraph(esc(doc_title.lstrip('# ').strip()),pstyle('doctitle',30,RED,36,True)));story.append(Spacer(1,6))
+            story.append(Paragraph(esc(subtitle.strip()),pstyle('docsub',11,DARK,16)));story.append(Spacer(1,22))
+        story.append(Paragraph(esc(heading),title));story.append(Spacer(1,20))
+        image=NOTE_IMAGES.get(i)
+        for n,p in enumerate(rest.strip().split('\n\n'),1):
             if p.startswith('###'):
-                story.append(Paragraph(esc(p.lstrip('# ').strip()),pstyle('sub',14,DARK,19,True)));story.append(Spacer(1,8));continue
-            if p.startswith('|'):
-                rows=[[c.strip() for c in line.strip().strip('|').split('|')] for line in p.split('\n') if not set(line)<=set('|-: ')]
-                small=pstyle('cell',8.5,DARK,11)
-                data=[[Paragraph(esc(c),pstyle('cellh',8.5,DARK,11,True) if r==0 else small) for c in row] for r,row in enumerate(rows)]
-                t=Table(data,colWidths=[100,45,60,298.28],repeatRows=1)
-                t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#E7E6E6')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.5,colors.HexColor('#cbd0d4')),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
-                story.append(t);story.append(Spacer(1,11));continue
-
-            # HTML line breaks help long source URLs stay within the page.
-            safe=esc(p.replace('\n',' '))
-            story.append(Paragraph(safe,text));story.append(Spacer(1,11))
-        if i in (2,4):
-            name='plan-zones.png' if i==2 else 'overview.png'
-            from PIL import Image as PillowImage
-            w,h=PillowImage.open(ASSETS/name).size
-            story.append(Image(str(ASSETS/name),width=470,height=470*h/w))
+                story.append(Paragraph(esc(p.lstrip('# ').strip()),pstyle('sub',14,DARK,19,True)));story.append(Spacer(1,8))
+            elif p.startswith('|'):
+                story.append(note_table(p));story.append(Spacer(1,11))
+            else:
+                story.append(Paragraph(esc(p.replace('\n',' ')),text));story.append(Spacer(1,11))
+            if image and image[1]==n:story.append(note_image(image[0]));story.append(Spacer(1,11))
+        if image and image[1] is None:story.append(note_image(image[0]))
     def footer(c,doc):
         c.setFont('Arial',8);c.setFillColor(colors.HexColor('#626a73'))
-        c.drawString(45,30,'Трио · Концепция после CP2 · 24.10.2026')
+        c.drawString(45,30,f'Трио · {NOTE_TITLE} · 24.10.2026')
         c.drawRightString(550,30,str(doc.page))
-    doc=SimpleDocTemplate(str(PDF/'trio-explanatory-note.pdf'),pagesize=(595.28,841.89),rightMargin=45,leftMargin=45,topMargin=44,bottomMargin=50,title='Трио — Путь станка — пояснительная записка',author='Команда Трио')
+    doc=SimpleDocTemplate(str(PDF/'trio-explanatory-note.pdf'),pagesize=(595.28,841.89),rightMargin=45,leftMargin=45,topMargin=44,bottomMargin=50,title=f'Трио — {NOTE_TITLE} — пояснительная записка',author='Команда Трио')
     doc.build(story,onFirstPage=footer,onLaterPages=footer)
 
 
