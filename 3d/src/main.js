@@ -24,6 +24,9 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 app.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.maxPolarAngle = Math.PI / 2.02;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.8;
+let autoRotateWanted = true;
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0xbdbdbd, 1.6));
 const sun = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -38,6 +41,7 @@ buildRoom(scene, data.room, label);
 // Зоны
 const zoneMeshes = [];
 const byId = {};
+const zoneExtras = {};
 data.zones.forEach((z) => {
   const mat = new THREE.MeshStandardMaterial({ color: COLORS[z.kind], emissive: 0x000000 });
   const m = new THREE.Mesh(new THREE.BoxGeometry(z.w, 0.15, z.d), mat);
@@ -57,10 +61,34 @@ data.zones.forEach((z) => {
   banner.position.set(bx, 0.17, bz);
   scene.add(banner);
 
+  zoneExtras[z.id] = { model, banner };
+
   const sp = label(String(z.id), 1);
   sp.position.set(z.x, 4.3, z.z);
   scene.add(sp);
 });
+
+// Затемнение зон вне сценария: красим модель и штендер в серый (устойчиво к стопке
+// полупрозрачных поверхностей моделей — при наложении через opacity плотные модели
+// из многих боксов визуально почти не бледнеют, слои альфа-блендинга складываются обратно в насыщенный цвет)
+const GRAY_OUT = new THREE.Color(0xb0b0b0);
+function setZoneDimmed(root, dimmed) {
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach((mt) => {
+      if (!mt.color) return;
+      if (mt.userData.baseColorHex === undefined) { mt.userData.baseColorHex = mt.color.getHex(); mt.userData.baseOpacity = mt.opacity; mt.userData.baseTransparent = mt.transparent; }
+      if (dimmed) {
+        mt.color.setHex(mt.userData.baseColorHex).lerp(GRAY_OUT, 0.8);
+        mt.opacity = mt.userData.baseOpacity * 0.55; mt.transparent = true;
+      } else {
+        mt.color.setHex(mt.userData.baseColorHex);
+        mt.opacity = mt.userData.baseOpacity; mt.transparent = mt.userData.baseTransparent;
+      }
+    });
+  });
+}
 
 // Стойка-штандарт: у переднего угла зоны (front — сторона подхода), внутри полосы обслуживания
 function bannerSpot(z) {
@@ -116,9 +144,12 @@ function applyScenario(s) {
   setRoute(s ? s.id : 'all');
   zoneMeshes.forEach((m) => {
     const on = ids.includes(m.userData.id);
+    const dimmed = Boolean(s) && !on;
     m.material.emissive.setHex(s && on ? 0x330000 : 0x000000);
-    m.material.opacity = 1; m.material.transparent = false;
-    if (s && !on) { m.material.transparent = true; m.material.opacity = 0.25; }
+    setZoneDimmed(m, dimmed);
+    const extra = zoneExtras[m.userData.id];
+    setZoneDimmed(extra.model, dimmed);
+    setZoneDimmed(extra.banner, dimmed);
   });
   document.querySelectorAll('#bar-scn button').forEach((b) => b.classList.toggle('on', s && b.dataset.id === s.id));
 }
@@ -148,10 +179,18 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 let mode = 'orbit';
 let tour = null;
 const setOn = (id) => ['btn-orbit', 'btn-top', 'btn-walk', 'btn-tour'].forEach((b) => $(b).classList.toggle('on', b === id));
-function toOrbit(pos) { mode = 'orbit'; tour = null; controls.enabled = true; camera.position.set(...pos); controls.target.set(0, 0, 0); camera.up.set(0, 1, 0); $('caption').style.display = 'none'; }
-$('btn-orbit').onclick = () => { toOrbit([0, 24, 30]); setOn('btn-orbit'); };
-$('btn-top').onclick = () => { toOrbit([0, 45, 0.01]); setOn('btn-top'); };
+function toOrbit(pos, autoRotate) {
+  mode = 'orbit'; tour = null; controls.enabled = true;
+  camera.position.set(...pos); controls.target.set(0, 0, 0); camera.up.set(0, 1, 0);
+  $('caption').style.display = 'none';
+  autoRotateWanted = autoRotate; controls.autoRotate = autoRotate;
+}
+$('btn-orbit').onclick = () => { toOrbit([0, 24, 30], true); setOn('btn-orbit'); };
+$('btn-top').onclick = () => { toOrbit([0, 45, 0.01], false); setOn('btn-top'); };
 $('btn-route').onclick = () => { route.visible = !route.visible; };
+// Автовращение «Облёта» приостанавливается, пока дом крутит сцену мышью, и возобновляется после отпускания
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
+addEventListener('pointerup', () => { if (mode === 'orbit') controls.autoRotate = autoRotateWanted; });
 
 // Прогулка
 let yaw = 0, pitch = 0, dragging = false;
